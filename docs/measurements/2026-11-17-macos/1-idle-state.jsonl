@@ -1,0 +1,3 @@
+{"mode":"idle","pid":21335,"pointerPollMs":null,"renderer":"initializing","state":"idle","syntheticCardCount":20,"timestamp":"2026-11-17T08:00:30.305227+00:00","visible":true}
+{"mode":"idle","pid":21335,"pointerPollMs":250,"renderer":"initializing","state":"idle","syntheticCardCount":20,"timestamp":"2026-11-17T08:00:30.340015+00:00","visible":true}
+{"mode":"idle","pid":21335,"pointerPollMs":250,"renderer":"webgl","state":"idle","syntheticCardCount":20,"timestamp":"2026-11-17T08:00:30.356204+00:00","visible":true}

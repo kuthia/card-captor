@@ -1,0 +1,49 @@
+{
+  "started_at": "2026-11-17T07:59:24.629564+00:00",
+  "app": "$PROJECT_ROOT/src-tauri/target/release/bundle/macos/Card Captor.app",
+  "binary_sha256": "6da5bd7ee12b65deda76ca68a13becca1a4963f8d35c6dd87cf27743871fdfe5",
+  "build": "release, Cargo feature measurement",
+  "samples_per_phase": 30,
+  "warmup_seconds": 10,
+  "orders": [
+    [
+      "idle",
+      "moving",
+      "cards"
+    ],
+    [
+      "moving",
+      "cards",
+      "idle"
+    ],
+    [
+      "cards",
+      "idle",
+      "moving"
+    ]
+  ],
+  "cpu": "Apple M1 Max",
+  "logical_cpus": 10,
+  "memory_bytes": 34359738368,
+  "macos": "27.2.1",
+  "macmon": "macmon 0.12.0",
+  "observer": "macmon 1Hz plus one app-scoped counter snapshot per second; baseline scans observer group for similar collection work",
+  "fixture_cards": 20,
+  "network": "Notion disabled; local synthetic cards",
+  "sleep_assertion": "caffeinate -d -i -u -w observer_pid; released on exit; no persistent settings changed",
+  "metrics": {
+    "app_cpu_percent_one_core": "sum CPU time / wall time * 100; 100%=one logical CPU",
+    "app_cpu_energy_w": "estimated process CPU energy only, excludes GPU rail and display",
+    "app_gpu_ms_per_s": "sum live app GPU queue execution time / wall time, not GPU core occupancy",
+    "sys_power": "system power estimate; cannot be attributed entirely to the app"
+  },
+  "source_sha256": {
+    "scripts/measure-macos.py": "1ab45ccbd54660a8d4934e61a54d0d57c4030b05eec7bae740a71fd45f1958fa",
+    "scripts/macos-process-metrics.c": "ec00a15dd08dda944a669f0e6c07b2c58c0d8fd01d19a47e16fdb4f335a91361",
+    "src/App.tsx": "b5c20cf85a6bd78b37d5668519d9ff393f93fd6fda43a63addc95353b0765d86",
+    "src/benchmark.ts": "ff4f819996432e00c2f17100e2d8057a39db6af96cfb95c96d5eef65453bbd55",
+    "src/activity-policy.ts": "39108c9a96914b7a53f8e6932118c56d16209385a16f98a26d2b160f4ade77de",
+    "src/renderer/pixi.ts": "3dd4f9bb30f45ac4dbe6fe909ea1a008a1c37ce4f38e3dd11b873038b3d907ac",
+    "src-tauri/src/lib.rs": "2d96c727fe50063c6542f677136cb9b3c645d74d1d4ac2e8d4ec3203170f79de"
+  }
+}

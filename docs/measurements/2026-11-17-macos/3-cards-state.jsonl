@@ -1,0 +1,4 @@
+{"mode":"idle","pid":30226,"pointerPollMs":null,"renderer":"initializing","state":"cards","syntheticCardCount":20,"timestamp":"2026-11-17T08:05:48.291194+00:00","visible":true}
+{"mode":"browsing","pid":30226,"pointerPollMs":null,"renderer":"initializing","state":"cards","syntheticCardCount":20,"timestamp":"2026-11-17T08:05:48.292329+00:00","visible":true}
+{"mode":"browsing","pid":30226,"pointerPollMs":250,"renderer":"initializing","state":"cards","syntheticCardCount":20,"timestamp":"2026-11-17T08:05:48.382259+00:00","visible":true}
+{"mode":"browsing","pid":30226,"pointerPollMs":250,"renderer":"webgl","state":"cards","syntheticCardCount":20,"timestamp":"2026-11-17T08:05:48.382695+00:00","visible":true}

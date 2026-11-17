@@ -1,0 +1,47 @@
+[
+  {
+    "state": "closed",
+    "run": 0,
+    "started_at": "2026-11-17T07:54:04.516995+00:00",
+    "ended_at": "2026-11-17T07:54:34.497413+00:00",
+    "sample_count": 30,
+    "state_log": null,
+    "root_pid": null
+  },
+  {
+    "state": "idle",
+    "run": 1,
+    "started_at": "2026-11-17T07:54:45.503971+00:00",
+    "ended_at": "2026-11-17T07:55:15.521637+00:00",
+    "sample_count": 30,
+    "state_log": "1-idle-state.jsonl",
+    "root_pid": 14595
+  },
+  {
+    "state": "moving",
+    "run": 1,
+    "started_at": "2026-11-17T07:55:26.513658+00:00",
+    "ended_at": "2026-11-17T07:55:56.504275+00:00",
+    "sample_count": 30,
+    "state_log": "1-moving-state.jsonl",
+    "root_pid": 14727
+  },
+  {
+    "state": "cards",
+    "run": 1,
+    "started_at": "2026-11-17T07:56:07.516883+00:00",
+    "ended_at": "2026-11-17T07:56:37.512693+00:00",
+    "sample_count": 30,
+    "state_log": "1-cards-state.jsonl",
+    "root_pid": 14865
+  },
+  {
+    "state": "closed",
+    "run": 1,
+    "started_at": "2026-11-17T07:56:43.510203+00:00",
+    "ended_at": "2026-11-17T07:57:13.534897+00:00",
+    "sample_count": 30,
+    "state_log": null,
+    "root_pid": null
+  }
+]

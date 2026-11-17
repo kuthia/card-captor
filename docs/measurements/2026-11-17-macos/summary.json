@@ -1,0 +1,748 @@
+{
+  "aggregation": "Within-run app rates are weighted by measured wall intervals; 1Hz system samples use arithmetic means. Across runs report median and min/max; no independent-sample confidence intervals.",
+  "states": {
+    "closed": {
+      "samples": 120,
+      "metrics": {
+        "app_cpu_percent": {
+          "unit": "% of one logical CPU",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.0,
+              "samples": 30
+            }
+          ],
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "app_gpu_ms_per_s": {
+          "unit": "GPU queue execution ms / wall second",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.0,
+              "samples": 30
+            }
+          ],
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "app_cpu_energy_mw": {
+          "unit": "estimated dynamic CPU energy mW",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.0,
+              "samples": 30
+            }
+          ],
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "system_power_w": {
+          "unit": "system power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 10.204147533333332,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 10.4990152,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 10.642093,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 21.08735953333333,
+              "samples": 30
+            }
+          ],
+          "median": 10.570554099999999,
+          "min": 10.204147533333332,
+          "max": 21.08735953333333
+        },
+        "system_cpu_power_w": {
+          "unit": "system CPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 0.7443447,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 0.7391312,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.8515180333333333,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 6.0677579,
+              "samples": 30
+            }
+          ],
+          "median": 0.7979313666666666,
+          "min": 0.7391312,
+          "max": 6.0677579
+        },
+        "system_gpu_power_w": {
+          "unit": "system GPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 0.4393890666666667,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 0.48572319999999997,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.5135708333333333,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.5586378333333334,
+              "samples": 30
+            }
+          ],
+          "median": 0.49964701666666667,
+          "min": 0.4393890666666667,
+          "max": 0.5586378333333334
+        },
+        "system_gpu_active_percent": {
+          "unit": "system GPU active time %",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 0,
+              "mean": 26.052803333333333,
+              "samples": 30
+            },
+            {
+              "run": 1,
+              "mean": 27.301156666666667,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 27.74512,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 26.601893333333336,
+              "samples": 30
+            }
+          ],
+          "median": 26.951525000000004,
+          "min": 26.052803333333333,
+          "max": 27.74512
+        }
+      }
+    },
+    "idle": {
+      "samples": 90,
+      "metrics": {
+        "app_cpu_percent": {
+          "unit": "% of one logical CPU",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 3.1770775113791236,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 3.1851023535191625,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 2.0035917464836253,
+              "samples": 30
+            }
+          ],
+          "median": 3.1770775113791236,
+          "min": 2.0035917464836253,
+          "max": 3.1851023535191625
+        },
+        "app_gpu_ms_per_s": {
+          "unit": "GPU queue execution ms / wall second",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 0.10032756169707532,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.13570354865874013,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.10223917450711323,
+              "samples": 30
+            }
+          ],
+          "median": 0.10223917450711323,
+          "min": 0.10032756169707532,
+          "max": 0.13570354865874013
+        },
+        "app_cpu_energy_mw": {
+          "unit": "estimated dynamic CPU energy mW",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 2.9417353789766763,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 2.8148980130144765,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 2.2527215142138104,
+              "samples": 30
+            }
+          ],
+          "median": 2.8148980130144765,
+          "min": 2.2527215142138104,
+          "max": 2.9417353789766763
+        },
+        "system_power_w": {
+          "unit": "system power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 10.681422066666666,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 10.134819666666665,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 20.824267000000003,
+              "samples": 30
+            }
+          ],
+          "median": 10.681422066666666,
+          "min": 10.134819666666665,
+          "max": 20.824267000000003
+        },
+        "system_cpu_power_w": {
+          "unit": "system CPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 1.0109382333333334,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.8224516333333334,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 5.869346466666667,
+              "samples": 30
+            }
+          ],
+          "median": 1.0109382333333334,
+          "min": 0.8224516333333334,
+          "max": 5.869346466666667
+        },
+        "system_gpu_power_w": {
+          "unit": "system GPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 0.3224168333333333,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.3305208333333333,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.3144226,
+              "samples": 30
+            }
+          ],
+          "median": 0.3224168333333333,
+          "min": 0.3144226,
+          "max": 0.3305208333333333
+        },
+        "system_gpu_active_percent": {
+          "unit": "system GPU active time %",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 26.767336666666665,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 25.92641,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 23.543889999999998,
+              "samples": 30
+            }
+          ],
+          "median": 25.92641,
+          "min": 23.543889999999998,
+          "max": 26.767336666666665
+        }
+      }
+    },
+    "moving": {
+      "samples": 90,
+      "metrics": {
+        "app_cpu_percent": {
+          "unit": "% of one logical CPU",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 23.296774800632647,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 23.547522903001916,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 15.758220836140492,
+              "samples": 30
+            }
+          ],
+          "median": 23.296774800632647,
+          "min": 15.758220836140492,
+          "max": 23.547522903001916
+        },
+        "app_gpu_ms_per_s": {
+          "unit": "GPU queue execution ms / wall second",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 9.71958721161337,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 9.768157932171546,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 9.56526423894136,
+              "samples": 30
+            }
+          ],
+          "median": 9.71958721161337,
+          "min": 9.56526423894136,
+          "max": 9.768157932171546
+        },
+        "app_cpu_energy_mw": {
+          "unit": "estimated dynamic CPU energy mW",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 16.74138108277525,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 16.35251711012831,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 13.29087592456237,
+              "samples": 30
+            }
+          ],
+          "median": 16.35251711012831,
+          "min": 13.29087592456237,
+          "max": 16.74138108277525
+        },
+        "system_power_w": {
+          "unit": "system power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 12.616907866666667,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 12.350874800000001,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 22.680547433333334,
+              "samples": 30
+            }
+          ],
+          "median": 12.616907866666667,
+          "min": 12.350874800000001,
+          "max": 22.680547433333334
+        },
+        "system_cpu_power_w": {
+          "unit": "system CPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 0.9728577333333334,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.8374138999999999,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 6.012926566666667,
+              "samples": 30
+            }
+          ],
+          "median": 0.9728577333333334,
+          "min": 0.8374138999999999,
+          "max": 6.012926566666667
+        },
+        "system_gpu_power_w": {
+          "unit": "system GPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 0.4529644,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.4158079,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.4502194666666667,
+              "samples": 30
+            }
+          ],
+          "median": 0.4502194666666667,
+          "min": 0.4158079,
+          "max": 0.4529644
+        },
+        "system_gpu_active_percent": {
+          "unit": "system GPU active time %",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 42.67375333333334,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 40.18578,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 40.02464333333333,
+              "samples": 30
+            }
+          ],
+          "median": 40.18578,
+          "min": 40.02464333333333,
+          "max": 42.67375333333334
+        }
+      }
+    },
+    "cards": {
+      "samples": 90,
+      "metrics": {
+        "app_cpu_percent": {
+          "unit": "% of one logical CPU",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 2.4631332336044975,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 2.7184404778566598,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 2.8010333647505,
+              "samples": 30
+            }
+          ],
+          "median": 2.7184404778566598,
+          "min": 2.4631332336044975,
+          "max": 2.8010333647505
+        },
+        "app_gpu_ms_per_s": {
+          "unit": "GPU queue execution ms / wall second",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.0,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.0,
+              "samples": 30
+            }
+          ],
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "app_cpu_energy_mw": {
+          "unit": "estimated dynamic CPU energy mW",
+          "time_weighted": true,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 2.5024756193398736,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 2.6549549824910703,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 2.469899601026111,
+              "samples": 30
+            }
+          ],
+          "median": 2.5024756193398736,
+          "min": 2.469899601026111,
+          "max": 2.6549549824910703
+        },
+        "system_power_w": {
+          "unit": "system power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 15.770238933333333,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 10.4677908,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 9.684263633333334,
+              "samples": 30
+            }
+          ],
+          "median": 10.4677908,
+          "min": 9.684263633333334,
+          "max": 15.770238933333333
+        },
+        "system_cpu_power_w": {
+          "unit": "system CPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 3.6614345666666663,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.8922916666666667,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.8141446,
+              "samples": 30
+            }
+          ],
+          "median": 0.8922916666666667,
+          "min": 0.8141446,
+          "max": 3.6614345666666663
+        },
+        "system_gpu_power_w": {
+          "unit": "system GPU power estimate W",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 0.3005193666666666,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 0.29956980000000005,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 0.29848383333333334,
+              "samples": 30
+            }
+          ],
+          "median": 0.29956980000000005,
+          "min": 0.29848383333333334,
+          "max": 0.3005193666666666
+        },
+        "system_gpu_active_percent": {
+          "unit": "system GPU active time %",
+          "time_weighted": false,
+          "runs": [
+            {
+              "run": 1,
+              "mean": 24.811833333333333,
+              "samples": 30
+            },
+            {
+              "run": 2,
+              "mean": 25.01238,
+              "samples": 30
+            },
+            {
+              "run": 3,
+              "mean": 24.661620000000003,
+              "samples": 30
+            }
+          ],
+          "median": 24.811833333333333,
+          "min": 24.661620000000003,
+          "max": 25.01238
+        }
+      }
+    }
+  },
+  "quality": {
+    "total_samples": 390,
+    "app_samples": 270,
+    "cpu_invalid_samples": 0,
+    "gpu_unavailable_samples": 0,
+    "unreadable_process_snapshots": 0,
+    "gpu_incomplete_coverage_samples": 0,
+    "shared_observer_coalition_samples": 0,
+    "wrong_native_state_samples": 0,
+    "hidden_or_non_webgl_samples": 0,
+    "near_pointer_samples": 0,
+    "far_pointer_samples": 270,
+    "observer_snapshot_wall_ms_mean": 14.089562817948718,
+    "battery_percent_start": 81,
+    "battery_percent_end": 79
+  }
+}

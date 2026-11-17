@@ -1,0 +1,30 @@
+# JavaScript dependencies and generated output
+node_modules/
+/dist/
+/coverage/
+*.tsbuildinfo
+
+# Tauri / Rust build artifacts and generated schemas
+/src-tauri/target/
+/src-tauri/gen/schemas/
+
+# Local tools, temporary captures, and caches
+/.artifacts/
+/.cache/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Credentials and machine-local environment settings
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Logs and operating-system metadata
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "com.apple.audio.SandboxHelper",
+    "helper_cpu_seconds": 0.000367291,
+    "ps_cpu_seconds": 0.0
+  },
+  {
+    "name": "com.apple.WebKit.Networking",
+    "helper_cpu_seconds": 0.001508293,
+    "ps_cpu_seconds": 0.0
+  },
+  {
+    "name": "com.apple.WebKit.WebContent",
+    "helper_cpu_seconds": 0.29960575,
+    "ps_cpu_seconds": 0.3
+  },
+  {
+    "name": "com.apple.WebKit.GPU",
+    "helper_cpu_seconds": 0.100761499,
+    "ps_cpu_seconds": 0.11000000000000001
+  },
+  {
+    "name": "SetStoreUpdateService",
+    "helper_cpu_seconds": 0.000746499,
+    "ps_cpu_seconds": 0.0
+  },
+  {
+    "name": "card-captor",
+    "helper_cpu_seconds": 0.195968292,
+    "ps_cpu_seconds": 0.19999999999999996
+  }
+]

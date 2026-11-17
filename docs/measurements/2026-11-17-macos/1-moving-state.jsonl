@@ -1,0 +1,6 @@
+{"mode":"idle","pid":21459,"pointerPollMs":null,"renderer":"initializing","state":"moving","syntheticCardCount":20,"timestamp":"2026-11-17T08:01:11.406476+00:00","visible":true}
+{"mode":"walk","pid":21459,"pointerPollMs":null,"renderer":"initializing","state":"moving","syntheticCardCount":20,"timestamp":"2026-11-17T08:01:11.408368+00:00","visible":true}
+{"mode":"idle","pid":21459,"pointerPollMs":null,"renderer":"initializing","state":"moving","syntheticCardCount":20,"timestamp":"2026-11-17T08:01:11.420767+00:00","visible":true}
+{"mode":"walk","pid":21459,"pointerPollMs":null,"renderer":"initializing","state":"moving","syntheticCardCount":20,"timestamp":"2026-11-17T08:01:11.441998+00:00","visible":true}
+{"mode":"walk","pid":21459,"pointerPollMs":250,"renderer":"initializing","state":"moving","syntheticCardCount":20,"timestamp":"2026-11-17T08:01:11.443441+00:00","visible":true}
+{"mode":"walk","pid":21459,"pointerPollMs":250,"renderer":"webgl","state":"moving","syntheticCardCount":20,"timestamp":"2026-11-17T08:01:11.470963+00:00","visible":true}

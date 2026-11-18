@@ -12,6 +12,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [features]
 default = []
 measurement = []
+character-validation = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

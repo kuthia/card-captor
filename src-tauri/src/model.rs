@@ -2,12 +2,21 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CharacterBackend {
+    #[default]
+    Robot,
+    Rive,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppConfig {
     pub view_id: String,
     pub refresh_seconds: u32,
     pub roaming_enabled: bool,
+    pub character_backend: CharacterBackend,
 }
 
 impl Default for AppConfig {
@@ -16,6 +25,7 @@ impl Default for AppConfig {
             view_id: String::new(),
             refresh_seconds: 60,
             roaming_enabled: true,
+            character_backend: CharacterBackend::Robot,
         }
     }
 }
@@ -147,6 +157,7 @@ mod tests {
         let config = serde_json::to_value(AppConfig::default()).unwrap();
         assert_eq!(config["refreshSeconds"], 60);
         assert_eq!(config["roamingEnabled"], true);
+        assert_eq!(config["characterBackend"], "robot");
         let status = serde_json::to_value(SetupStatus {
             config: AppConfig::default(),
             has_token: false,
@@ -181,5 +192,27 @@ mod tests {
         assert_eq!(editor["cardId"], "page-id");
         assert!(editor["fields"][0]["currentOptionId"].is_null());
         assert_eq!(editor["fields"][0]["options"][0]["name"], "검토 대기");
+    }
+
+    #[test]
+    fn old_settings_keep_their_values_and_default_to_the_robot() {
+        let mut config: AppConfig = serde_json::from_value(serde_json::json!({
+            "viewId": ID, "refreshSeconds": 120, "roamingEnabled": false
+        }))
+        .unwrap();
+        assert_eq!(config.view_id, ID);
+        assert_eq!(config.refresh_seconds, 120);
+        assert!(!config.roaming_enabled);
+        assert_eq!(config.character_backend, CharacterBackend::Robot);
+        config.character_backend = CharacterBackend::Rive;
+        let json = serde_json::to_value(&config).unwrap();
+        assert_eq!(json["characterBackend"], "rive");
+        assert_eq!(serde_json::from_value::<AppConfig>(json).unwrap(), config);
+        for invalid in ["unknown", "Rive", "https://example.com/model.riv", ""] {
+            assert!(
+                serde_json::from_value::<CharacterBackend>(serde_json::json!(invalid)).is_err()
+            );
+        }
+        assert!(serde_json::from_value::<CharacterBackend>(serde_json::Value::Null).is_err());
     }
 }

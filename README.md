@@ -4,7 +4,7 @@ Notion GTD 뷰에 해당하는 페이지를 카드로 보여주는 데스크톱 
 
 Tauri 2와 React로 구성하며 macOS와 Windows를 대상으로 합니다. 첫 버전은 **주 모니터의 작업 영역**에서 동작합니다.
 
-캐릭터는 별도 PixiJS WebGL 렌더러를 사용합니다. 걷기 애니메이션은 최대 30 FPS로 제한하고, 대기 중에는 연속 프레임 루프를 멈춥니다. WebGL 사용이 어려우면 정적인 SVG로 표시합니다. Live2D·3D 모델과 실제 소비 전력 비교는 후속 범위입니다.
+카드 패널의 **캐릭터** 선택에서 기본 PixiJS 로봇과 공식 Rive `Centaur` 샘플을 바꿀 수 있습니다. 일반 모드에서는 선택을 저장해 다음 실행에도 적용합니다. 기존 설정은 기본 로봇으로 시작합니다. 기본 로봇은 대기 중 연속 프레임을 멈추고, Rive는 대기·열람 중에도 모션을 재생합니다. 연속 갱신은 최대 30 FPS를 목표로 하며 WebGL 실패 시 정적인 SVG로 표시합니다.
 
 ## 실행
 
@@ -23,6 +23,14 @@ pnpm desktop
 | `pnpm build` | TypeScript 검사와 프런트엔드 빌드 |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Notion 응답 변환·설정 검증 테스트 |
 | `pnpm desktop:build` | 현재 OS용 데스크톱 앱 빌드 |
+| `pnpm desktop:rive` | Rive 샘플·합성 카드로 대화형 데스크톱 검증 |
+| `pnpm desktop:build:rive --bundles app` | macOS Rive 검증 feature를 포함한 앱 번들 생성 |
+
+일반 모드는 `pnpm desktop`으로 실행하고, 기존 Notion 연결을 사용하는 카드 패널에서 Rive를 선택합니다. 캐릭터 선택만 바꿀 때는 키체인이나 Notion을 호출하지 않습니다. 선택 저장에 실패하면 기존 캐릭터와 오류 안내를 유지합니다.
+
+합성 카드를 사용하는 Rive 검증은 기존 Card Captor를 종료한 뒤 `pnpm desktop:rive`로 실행합니다. 검증 모드에서는 실제 설정·키체인·Notion에 접근하지 않으며 캐릭터 선택도 메모리에서만 변경합니다. 브라우저 미리보기의 선택도 저장하지 않습니다. 검증 feature가 있는 빌드도 인자 없이 실행하면 저장된 캐릭터와 실제 Notion 연결을 사용하는 일반 모드입니다. 릴리스 검증에는 `--character-validation` 인자를 전달합니다.
+
+모델은 MIT로 제공된 공식 샘플이며 실행 중 외부 CDN에서 받지 않습니다. 출처와 사용 조건은 [Rive 자산 문서](docs/rive-assets.md), 상태 매핑·모드별 실행·검증 결과는 [Rive 동작 검증](docs/rive-validation.md)에 정리했습니다.
 
 ## Notion 연결
 
@@ -45,6 +53,8 @@ pnpm desktop
 Paca 어댑터, 상태 이외 카드 속성 편집, 다중 모니터 이동, LLM 기능은 후속 범위입니다. Paca는 로컬 호스팅 GTD 도구이며 연결 대상은 기본적으로 사용자가 지정한 서버입니다.
 
 요구사항과 수용 기준은 [기능 명세](docs/spec.md), 모듈·권한 경계와 참고 프로젝트는 [구조 문서](docs/architecture.md)에 정리했습니다. 캐릭터 크기·좌표·상태·애니메이션 설정과 교체 기준은 [캐릭터 리소스와 애니메이션 사양](docs/character-sprites.md)에 정리했습니다. 실제 Notion 계정 연결과 OS 창 동작은 수용 기준에 따라 별도로 검증해야 합니다.
+
+Live2D 등 캐릭터 표현 확장에 필요한 런타임·모델 계약, BongoCat 구조의 재사용 범위와 네이티브 전환 조건은 [표현 계층 전환 검토](docs/presentation-migration.md)에 정리했습니다.
 
 ## macOS 자원 측정
 

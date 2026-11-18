@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEve
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { currentMonitor, cursorPosition, getCurrentWindow } from '@tauri-apps/api/window';
-import { DEFAULT_CONFIG, type AppConfig, type SetupStatus } from './contracts';
+import { DEFAULT_CONFIG, type AppConfig, type CharacterBackend, type SetupStatus } from './contracts';
 import { clampPoint, containsPoint, physicalToLocal, placePanel, type Bounds, type Point } from './geometry';
 import type { MotionState } from './motion';
 import { CursorInputWriter, POINTER_FAR_MS, pointerPollDelay, startAdaptivePolling, startRoaming } from './activity-policy';
@@ -13,6 +13,8 @@ import { StatusEditor } from './StatusEditor';
 import { StatusOptionsCache } from './status-options-cache';
 import type { FeedSnapshot } from './contracts';
 import { measurement, seededMeasurementRandom } from './benchmark';
+import { characterValidation } from './validation';
+import { RiveCharacter } from './RiveCharacter';
 
 const PET = { width: 168, height: 180 };
 const emptySetup: SetupStatus = { config: { ...DEFAULT_CONFIG }, hasToken: false, snapshot: null };
@@ -71,12 +73,16 @@ export default function App() {
   const [dragging, setDragging] = useState(false);
   const [roamRevision, setRoamRevision] = useState(0);
   const [hovered, setHovered] = useState(false);
+  const [previewBackend, setPreviewBackend] = useState<CharacterBackend>(characterValidation ? 'rive' : 'robot');
+  const [selectingCharacter, setSelectingCharacter] = useState(false);
+  const [characterError, setCharacterError] = useState<string | null>(null);
   const [panelSize, setPanelSize] = useState({ width: 352, height: 410 });
   const petRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const setupRef = useRef(setup);
   const boundsRef = useRef(bounds);
   const positionRef = useRef(position);
+  const directionRef = useRef<-1 | 1>(1);
   const mutationBusy = useRef(false);
   const scheduler = useRef<RefreshScheduler<FeedSnapshot> | null>(null);
   const statusOptions = useRef(new StatusOptionsCache());
@@ -91,6 +97,7 @@ export default function App() {
   const connected = setup.hasToken && !!setup.config.viewId;
   const snapshot = setup.snapshot;
   const panelOpen = deckOpen || settingsOpen;
+  const characterBackend = characterValidation || !desktop ? previewBackend : setup.config.characterBackend;
 
   const reportError = useCallback((value: unknown, fallback: string) => {
     if (mounted.current) setError(errorMessage(value, fallback));
@@ -98,6 +105,8 @@ export default function App() {
 
   // Walking updates the composited layer, keeping the card UI out of the frame loop.
   const movePet = useCallback((next: Point, commit = false) => {
+    const dx = next.x - positionRef.current.x;
+    if (Math.abs(dx) > 0.01) directionRef.current = dx < 0 ? -1 : 1;
     positionRef.current = next;
     if (petRef.current) petRef.current.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`;
     if (commit) setPosition(next);
@@ -127,7 +136,7 @@ export default function App() {
       setSetup(value);
       setDraft(value.config);
       setLoaded(true);
-      if (desktop && !measurement && !value.hasToken) setSettingsOpen(true);
+      if (desktop && !measurement && !characterValidation && !value.hasToken) setSettingsOpen(true);
       void refresh();
     }).catch(value => {
       if (canceled) return;
@@ -236,6 +245,25 @@ export default function App() {
     return () => { observer.disconnect(); measurementReporter.current = () => {}; };
   }, [hidden, mode]);
 
+  useEffect(() => {
+    if (!characterValidation || !desktop) return;
+    const report = () => {
+      const renderer = petRef.current?.querySelector<HTMLElement>('[data-renderer]');
+      void invoke('validation_event', { event: {
+        mode, renderer: renderer?.dataset.renderer ?? 'initializing', visible: !hidden,
+        frameCount: Number(renderer?.dataset.frameCount ?? 0),
+        x: positionRef.current.x, y: positionRef.current.y,
+      } }).catch(() => {});
+    };
+    const observer = new MutationObserver(report);
+    if (petRef.current) observer.observe(petRef.current, {
+      subtree: true, attributes: true, attributeFilter: ['data-renderer'], childList: true,
+    });
+    report();
+    const timer = window.setInterval(report, 1000);
+    return () => { observer.disconnect(); window.clearInterval(timer); };
+  }, [characterBackend, hidden, mode]);
+
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!panel || !panelOpen) return;
@@ -314,7 +342,7 @@ export default function App() {
   }, [panelOpen, settingsOpen]);
 
   const openSettings = useCallback(() => {
-    if (measurement) return;
+    if (measurement || characterValidation) return;
     movePet(positionRef.current, true);
     setDraft({ ...setupRef.current.config });
     setToken('');
@@ -343,7 +371,7 @@ export default function App() {
     if (mutationBusy.current) return;
     const current = setupRef.current;
     const config = { ...current.config, roamingEnabled: !current.config.roamingEnabled };
-    if (!desktop) { setSetup(value => ({ ...value, config })); return; }
+    if (!desktop || characterValidation) { setSetup(value => ({ ...value, config })); return; }
     const wasRefreshing = scheduler.current!.isRunning;
     mutationBusy.current = true;
     scheduler.current!.invalidate();
@@ -357,6 +385,29 @@ export default function App() {
     finally { mutationBusy.current = false; }
     if (saved && wasRefreshing) await scheduler.current!.request(true);
   }, [reportError]);
+
+  async function changeCharacterBackend(backend: CharacterBackend) {
+    if (measurement || backend === characterBackend || mutationBusy.current || !loaded) return;
+    setCharacterError(null);
+    if (!desktop || characterValidation) { setPreviewBackend(backend); return; }
+    mutationBusy.current = true;
+    setSelectingCharacter(true);
+    try {
+      const saved = await provider.setCharacterBackend(backend);
+      if (!mounted.current) return;
+      // A feed refresh may have finished during the save. Merge only this preference.
+      setSetup(current => {
+        const next = { ...current, config: { ...current.config, characterBackend: saved } };
+        setupRef.current = next;
+        return next;
+      });
+    } catch (value) {
+      if (mounted.current) setCharacterError(errorMessage(value, '캐릭터 선택을 저장하지 못했습니다. 다시 시도해 주세요.'));
+    } finally {
+      mutationBusy.current = false;
+      if (mounted.current) setSelectingCharacter(false);
+    }
+  }
 
   useEffect(() => {
     if (!desktop) return;
@@ -429,7 +480,7 @@ export default function App() {
     setSaving(true);
     let saved = false;
     try {
-      const next = await provider.saveSetup({ ...draft, viewId: draft.viewId.trim() }, token.trim() || null);
+      const next = await provider.saveSetup({ ...draft, viewId: draft.viewId.trim(), characterBackend: setupRef.current.config.characterBackend }, token.trim() || null);
       if (token.trim() || next.config.viewId !== setupRef.current.config.viewId) statusOptions.current.clear();
       setupRef.current = next;
       setSetup(next);
@@ -498,7 +549,8 @@ export default function App() {
   const lastSuccess = snapshot ? shortTime(snapshot.refreshedAt) : null;
 
   return <main className={`scene ${desktop ? 'scene--desktop' : 'scene--preview'}`}
-    data-measurement-state={measurement?.state} data-motion-state={mode}>
+    data-measurement-state={measurement?.state} data-motion-state={mode} data-character-validation={characterValidation || undefined}>
+    {characterValidation && <div className="validation-label">Rive 로컬 검증 · 합성 카드 6개 · {mode}</div>}
     {measurement && <div style={{ position: 'absolute', top: 12, left: 12, padding: '6px 10px', borderRadius: 6, background: '#fffdf5', color: '#657056', fontSize: 11 }}>
       측정 모드 / 합성 카드 20개 / {measurement.state}
     </div>}
@@ -516,7 +568,9 @@ export default function App() {
       onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}
       onClick={event => { if (event.detail === 0) toggleDeck(); }}
       onContextMenu={event => { event.preventDefault(); openSettings(); }}>
-      <Robot state={mode} count={snapshot?.cards.length ?? 0} paused={hidden || reduceMotion} />
+      {characterBackend === 'rive'
+        ? <RiveCharacter state={mode} count={snapshot?.cards.length ?? 0} paused={hidden || reduceMotion} direction={directionRef} />
+        : <Robot state={mode} count={snapshot?.cards.length ?? 0} paused={hidden || reduceMotion} />}
       <span className="pet-caption"><span className={`signal-dot ${issue ? 'signal-dot--warning' : connected ? 'signal-dot--connected' : ''}`} />{loaded ? stateLabels[mode] : '캡터가 일어나는 중'}</span>
     </button>
 
@@ -526,7 +580,7 @@ export default function App() {
       <header className="panel-header">
         <div><span className="eyebrow">{settingsOpen ? 'MAKE A CONNECTION' : 'YOUR LITTLE DECK'}</span><h1 tabIndex={-1} data-autofocus={!settingsOpen || undefined}>{settingsOpen ? 'Notion 연결하기' : '내 카드 덱'}{!settingsOpen && <span className="card-count">{snapshot?.cards.length ?? 0}</span>}</h1></div>
         <div className="header-actions">
-          {!settingsOpen && <button className="icon-button" aria-label="Notion 연결 설정" title="연결 설정" disabled={updatingStatus} onClick={openSettings}><Icon name="settings" /></button>}
+          {!settingsOpen && !characterValidation && <button className="icon-button" aria-label="Notion 연결 설정" title="연결 설정" disabled={updatingStatus || selectingCharacter} onClick={openSettings}><Icon name="settings" /></button>}
           <button className="icon-button" aria-label="창 닫기" title="닫기 (Esc)" onClick={closePanel}><Icon name="close" /></button>
         </div>
       </header>
@@ -550,17 +604,17 @@ export default function App() {
         <button type="submit" className="primary-button" disabled={!desktop || saving}>{saving ? '연결 저장 중…' : '연결하고 카드 가져오기'}<span aria-hidden="true">↗</span></button>
         {setup.hasToken && <button type="button" className="text-button disconnect-button" onClick={() => void disconnect()} disabled={saving}>Notion 연결 해제</button>}
       </form> : <>
-        <div className="feed-bar"><span className="source-label"><span className="notion-mark">N</span>Notion<span className="source-divider">/</span>{connected ? '연결된 뷰' : '연결 대기'}</span><button className={`icon-button refresh-button ${refreshing ? 'is-refreshing' : ''}`} aria-label="카드 새로고침" title="새로고침" disabled={!desktop || !connected || refreshing || updatingStatus || !online} onClick={() => void refresh()}><Icon name="refresh" /></button></div>
+        <div className="feed-bar"><span className="source-label"><span className="notion-mark">N</span>{characterValidation ? '로컬 샘플' : 'Notion'}<span className="source-divider">/</span>{characterValidation ? '검증용 카드' : connected ? '연결된 뷰' : '연결 대기'}</span><button className={`icon-button refresh-button ${refreshing ? 'is-refreshing' : ''}`} aria-label="카드 새로고침" title="새로고침" disabled={!desktop || !connected || refreshing || updatingStatus || selectingCharacter || !online} onClick={() => void refresh()}><Icon name="refresh" /></button></div>
         {statusNotice && <p className="status-notice" role="status">{statusNotice}</p>}
         {snapshot && snapshot.cards.length > 0 ? <ol className="card-list">{snapshot.cards.map((card, index) => <li key={card.id} className="task-card-row">
           <span className="card-index">{String(index + 1).padStart(2, '0')}</span>
           <div className="card-content">
-            <button className="task-card task-card--title" onClick={() => provider.openCard(card.id).catch(value => reportError(value, 'Notion 페이지를 열지 못했습니다. 다시 시도해 주세요.'))} disabled={!desktop}>
+            <button className="task-card task-card--title" onClick={() => provider.openCard(card.id).catch(value => reportError(value, 'Notion 페이지를 열지 못했습니다. 다시 시도해 주세요.'))} disabled={!desktop || characterValidation}>
               <span className="card-title">{card.title || '제목 없음'}</span><span className="card-open"><Icon name="arrow" /></span>
             </button>
             {card.dueAt && <span className="due-date">{dueDate(card.dueAt)}</span>}
             <StatusEditor cardId={card.id} title={card.title || '제목 없음'} status={card.status} statusColor={card.statusColor}
-              disabled={!desktop || !connected || !online || refreshing || saving || updatingStatus || !!measurement}
+              disabled={!desktop || !connected || !online || refreshing || saving || updatingStatus || selectingCharacter || !!measurement}
               getCached={() => statusOptions.current.get(card.id)}
               load={() => statusOptions.current.refresh(card.id, () => provider.getCardStatus(card.id))}
               onChange={(fieldId, optionId) => updateStatus(card.id, fieldId, optionId)} />
@@ -568,7 +622,18 @@ export default function App() {
         </li>)}</ol> : <div className="empty-state"><div className="empty-deck" aria-hidden="true"><span /><span /><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 12 4 4 8-9" /></svg></span></div><h2>{refreshing ? '카드를 챙겨 오는 중이에요' : connected ? '지금은 해당하는 카드가 없어요' : '아직 챙겨 온 카드가 없어요'}</h2><p>{connected ? 'Notion 뷰의 필터에 맞는 페이지가 생기면\n여기에 차곡차곡 모아 둘게요.' : '자주 보는 Notion 뷰를 연결해 주세요.\n필요한 카드들만 곁에 둘 수 있어요.'}</p>{!connected && <button className="connect-button" onClick={openSettings}>Notion 뷰 연결하기<span aria-hidden="true">↗</span></button>}</div>}
         {snapshot?.warning && <div className="feed-warning" role="status">{snapshot.warning}</div>}
         {snapshot?.hasMore && <p className="more-note">카드가 더 있어요. 목록 일부를 표시하고 있습니다.</p>}
-        <footer className="panel-footer"><span className={error && snapshot ? 'stale-label' : ''}>{refreshing ? '카드 새로고침 중…' : lastSuccess ? `${lastSuccess}에 마지막으로 가져왔어요${error ? ' · 이전 카드' : ''}` : desktop ? '연결하면 카드를 가져올게요' : '브라우저 미리보기 · 카드 0개'}</span><button className="icon-button roam-button" aria-label={setup.config.roamingEnabled ? '산책 잠시 멈추기' : '산책 다시 시작하기'} title={setup.config.roamingEnabled ? '산책 잠시 멈추기' : '산책 다시 시작하기'} onClick={() => void toggleRoaming()}><Icon name={setup.config.roamingEnabled ? 'pause' : 'play'} /></button></footer>
+        <div className="character-controls" role="group" aria-label="캐릭터 선택" aria-busy={selectingCharacter}>
+          <span>캐릭터</span>
+          <div className="character-options">
+            <button aria-pressed={characterBackend === 'robot'} disabled={!loaded || selectingCharacter || saving || updatingStatus || !!measurement}
+              onClick={() => void changeCharacterBackend('robot')}>기본 로봇</button>
+            <button aria-pressed={characterBackend === 'rive'} disabled={!loaded || selectingCharacter || saving || updatingStatus || !!measurement}
+              onClick={() => void changeCharacterBackend('rive')}>Rive · Centaur</button>
+          </div>
+          {selectingCharacter && <span className="character-saving" role="status">저장 중…</span>}
+        </div>
+        {characterError && <p className="character-setting-error" role="alert">{characterError}</p>}
+        <footer className="panel-footer"><span className={error && snapshot ? 'stale-label' : ''}>{refreshing ? '카드 새로고침 중…' : lastSuccess ? `${lastSuccess}에 마지막으로 가져왔어요${error ? ' · 이전 카드' : ''}` : desktop ? '연결하면 카드를 가져올게요' : '브라우저 미리보기 · 카드 0개'}</span><button className="icon-button roam-button" aria-label={setup.config.roamingEnabled ? '산책 잠시 멈추기' : '산책 다시 시작하기'} title={setup.config.roamingEnabled ? '산책 잠시 멈추기' : '산책 다시 시작하기'} disabled={selectingCharacter} onClick={() => void toggleRoaming()}><Icon name={setup.config.roamingEnabled ? 'pause' : 'play'} /></button></footer>
       </>}
     </section>}
   </main>;

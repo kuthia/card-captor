@@ -40,10 +40,13 @@ export interface StatusUpdateResult {
   warning?: string;
 }
 
+export type CharacterBackend = 'robot' | 'rive';
+
 export interface AppConfig {
   viewId: string;
   refreshSeconds: number;
   roamingEnabled: boolean;
+  characterBackend: CharacterBackend;
 }
 
 export interface SetupStatus {
@@ -56,11 +59,13 @@ export const DEFAULT_CONFIG: AppConfig = {
   viewId: '',
   refreshSeconds: 60,
   roamingEnabled: true,
+  characterBackend: 'robot',
 };
 
 export interface CardProvider {
   getSetup(): Promise<SetupStatus>;
   saveSetup(config: AppConfig, token: string | null): Promise<SetupStatus>;
+  setCharacterBackend(backend: CharacterBackend): Promise<CharacterBackend>;
   refresh(): Promise<FeedSnapshot>;
   disconnect(): Promise<void>;
   openCard(id: string): Promise<void>;

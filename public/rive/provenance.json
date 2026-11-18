@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "name": "Centaur Character",
+  "publisher": "Rive",
+  "repository": "https://github.com/rive-app/rive-wasm",
+  "commit": "9acb00a58695422cd108aa2bd6a31966710f8d31",
+  "sourcePath": "wasm/examples/centaur_game/centaur.riv",
+  "sourceUrl": "https://raw.githubusercontent.com/rive-app/rive-wasm/9acb00a58695422cd108aa2bd6a31966710f8d31/wasm/examples/centaur_game/centaur.riv",
+  "license": "MIT",
+  "licenseUrl": "https://raw.githubusercontent.com/rive-app/rive-wasm/9acb00a58695422cd108aa2bd6a31966710f8d31/LICENSE",
+  "localLicenseFile": "LICENSE.rive-sample.txt",
+  "localFile": "sample.riv",
+  "sizeBytes": 46302,
+  "gitBlobSha1": "f37826e07124fbf339c0246a5e3525c27950ffa7",
+  "sha256": "8fc833d1a98ebf803521375e570b4dbcd36e15c79c45eab4e411421392f2f764",
+  "retrievedOn": "2026-11-18",
+  "modified": false,
+  "artboard": "Character",
+  "runtime": {
+    "package": "@rive-app/webgl2-advanced",
+    "version": "2.51.0",
+    "repository": "https://github.com/rive-app/rive-wasm",
+    "npmGitHead": "81fe4a7087198392cbfde26f827873469366d9dc",
+    "npmMetadata": "https://registry.npmjs.org/@rive-app/webgl2-advanced/2.51.0",
+    "license": "MIT",
+    "licenseUrl": "https://raw.githubusercontent.com/rive-app/rive-wasm/81fe4a7087198392cbfde26f827873469366d9dc/LICENSE",
+    "localLicenseFile": "LICENSE.rive-runtime.txt",
+    "licenseSha256": "8a1efa755d19446b51a18e1c15f6308728da0b36283c4d38050698ad6954b69a"
+  }
+}

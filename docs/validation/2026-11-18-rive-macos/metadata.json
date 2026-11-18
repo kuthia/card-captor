@@ -1,0 +1,170 @@
+{
+  "date": "2026-11-18",
+  "platform": "darwin",
+  "arch": "arm64",
+  "macOS": "27.2.1",
+  "cpu": "Apple M1 Max",
+  "gitHead": "7fe3c64ab9b2833385cf9555273c3310fd2dc67c",
+  "uncommittedImplementation": true,
+  "buildCommand": "pnpm desktop:build:rive --bundles app",
+  "launchArgument": "--character-validation",
+  "binary": "$PROJECT_ROOT/src-tauri/target/release/bundle/macos/Card Captor.app/Contents/MacOS/card-captor",
+  "binarySha256": "1e73cde5a8cc3c08b9dabbc915b65ae57ffbd94472d6f681c463b249875bc2b2",
+  "runtime": "@rive-app/webgl2-advanced@2.51.0",
+  "model": "Centaur Character",
+  "tests": {
+    "frontend": 57,
+    "native": 29
+  },
+  "sourceSha256": {
+    "package.json": "4ea449a788ac83448aa449d71c09341228f8376f69aa425b8bff5fcd124033d1",
+    "pnpm-lock.yaml": "3da13e83b60207ef91cfe2ad00b281866f8bed83016f87c9729682c860506cc2",
+    "src/App.tsx": "af809c72c2e02329f3b169f40162ffcfc11f2f294ca3275d7f2941c725cfccfa",
+    "src/RiveCharacter.tsx": "5df9cfca7642ca58964840296b710e9c4d27d6800aa79424fb0e278f5ed096ee",
+    "src/geometry.ts": "f28e1cd83666dc808a6f0205735fe79ef6b50d2b21625f759626d80b9ea8c035",
+    "src/validation.ts": "fa47ce51ef6ab137746b92b7a0ed849493787a25d4df512ee25f5d05facb7dba",
+    "src/provider.ts": "72f948d64292d0e5e89f074fcba6daf7df2facc4ad705a4fa11644efcb5b4418",
+    "src/rive/runtime.ts": "1007526432bc59cd9175e9d92de25231fb95ea6678f59825f92809044fddb64e",
+    "src/rive/sample-pose.ts": "01a7052840d65a608d4a1e589b112e77175bba990ea5be0087521af07693c1db",
+    "src/rive/scheduler.ts": "1f5064efd18db2450c8ba03a00fe419e583cc85d34bc230baf86975891df9ba3",
+    "src/rive/contract.ts": "d62e4676ee0219cc0e4c7930a6d9daf7399979ab1e03ba9e0a41e9e415f2eca2",
+    "src-tauri/src/lib.rs": "fe5febd407070e35103a8d1d7dbde4b5490dca6dec9d9da009346d81699c233c",
+    "src-tauri/tauri.conf.json": "f6adff91775abfaf36b8520c344937e8c52f81ccaf9f2a3338f0dac4190af3bf",
+    "src-tauri/Cargo.toml": "dddd1cd178ee411aaa4e4deba581ace98449d557c555eb12eaad3936dd1f5595",
+    "public/rive/sample.riv": "8fc833d1a98ebf803521375e570b4dbcd36e15c79c45eab4e411421392f2f764"
+  },
+  "summary": [
+    {
+      "mode": "idle",
+      "from": "2026-11-18T04:33:04.938777+00:00",
+      "to": "2026-11-18T04:33:07.831410+00:00",
+      "frames": [
+        0,
+        75
+      ],
+      "samples": 4,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "walk",
+      "from": "2026-11-18T04:33:08.347328+00:00",
+      "to": "2026-11-18T04:33:17.362573+00:00",
+      "frames": [
+        90,
+        332
+      ],
+      "samples": 10,
+      "travelCssPx": 315.46
+    },
+    {
+      "mode": "browsing",
+      "from": "2026-11-18T04:33:18.265107+00:00",
+      "to": "2026-11-18T04:33:45.353321+00:00",
+      "frames": [
+        357,
+        1081
+      ],
+      "samples": 28,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "dragging",
+      "from": "2026-11-18T04:33:46.004927+00:00",
+      "to": "2026-11-18T04:33:46.004927+00:00",
+      "frames": [
+        1100,
+        1100
+      ],
+      "samples": 1,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "idle",
+      "from": "2026-11-18T04:33:46.520629+00:00",
+      "to": "2026-11-18T04:33:49.525711+00:00",
+      "frames": [
+        1114,
+        1196
+      ],
+      "samples": 4,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "dragging",
+      "from": "2026-11-18T04:33:49.663108+00:00",
+      "to": "2026-11-18T04:33:49.663108+00:00",
+      "frames": [
+        1200,
+        1200
+      ],
+      "samples": 1,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "idle",
+      "from": "2026-11-18T04:33:49.676936+00:00",
+      "to": "2026-11-18T04:33:59.690964+00:00",
+      "frames": [
+        1201,
+        1471
+      ],
+      "samples": 11,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "browsing",
+      "from": "2026-11-18T04:34:00.496132+00:00",
+      "to": "2026-11-18T04:34:03.496220+00:00",
+      "frames": [
+        1494,
+        1575
+      ],
+      "samples": 4,
+      "travelCssPx": 0
+    },
+    {
+      "mode": "browsing",
+      "from": "2026-11-18T04:34:10.000658+00:00",
+      "to": "2026-11-18T04:35:03.167002+00:00",
+      "frames": [
+        0,
+        1439
+      ],
+      "samples": 54,
+      "travelCssPx": 0
+    }
+  ],
+  "drags": [
+    {
+      "from": [
+        1189.9071317443368,
+        703.7469301087511
+      ],
+      "to": [
+        1189.9071317443368,
+        703.7469301087511
+      ],
+      "dx": 0,
+      "dy": 0,
+      "renderer": "rive"
+    },
+    {
+      "from": [
+        1189.9071317443368,
+        703.7469301087511
+      ],
+      "to": [
+        989.9071317443368,
+        603.7469301087511
+      ],
+      "dx": -200,
+      "dy": -100,
+      "renderer": "rive"
+    }
+  ],
+  "renderers": [
+    "initializing",
+    "rive",
+    "webgl"
+  ]
+}

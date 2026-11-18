@@ -1,14 +1,26 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
-import { DEFAULT_CONFIG, type AppConfig, type CardProvider, type CardStatusEditor, type FeedSnapshot, type SetupStatus, type StatusUpdateResult } from './contracts';
+import { DEFAULT_CONFIG, type AppConfig, type CharacterBackend, type CardProvider, type CardStatusEditor, type FeedSnapshot, type SetupStatus, type StatusUpdateResult } from './contracts';
 import { measurement, measurementSetup } from './benchmark';
+import { characterValidation, validationSetup } from './validation';
 
 export const desktop = isTauri();
 const previewError = () => Promise.reject(new Error('데스크톱 앱에서 Notion을 연결해 주세요.'));
 const measurementError = () => Promise.reject(new Error('측정 모드에서는 연결과 외부 동작을 변경하지 않습니다.'));
+const validationError = () => Promise.reject(new Error('캐릭터 검증 모드에서는 연결과 외부 동작을 변경하지 않습니다.'));
 
-export const provider: CardProvider = measurement ? {
+export const provider: CardProvider = characterValidation ? {
+  getSetup: async () => validationSetup(),
+  saveSetup: validationError,
+  setCharacterBackend: validationError,
+  refresh: async () => validationSetup().snapshot!,
+  disconnect: validationError,
+  openCard: validationError,
+  getCardStatus: validationError,
+  updateCardStatus: validationError,
+} : measurement ? {
   getSetup: async () => measurementSetup(),
   saveSetup: measurementError,
+  setCharacterBackend: measurementError,
   refresh: measurementError,
   disconnect: measurementError,
   openCard: measurementError,
@@ -17,6 +29,7 @@ export const provider: CardProvider = measurement ? {
 } : desktop ? {
   getSetup: () => invoke<SetupStatus>('get_setup'),
   saveSetup: (config: AppConfig, token: string | null) => invoke<SetupStatus>('save_setup', { config, token }),
+  setCharacterBackend: (backend: CharacterBackend) => invoke<CharacterBackend>('set_character_backend', { backend }),
   refresh: () => invoke<FeedSnapshot>('refresh_feed'),
   disconnect: () => invoke<void>('disconnect'),
   openCard: (id: string) => invoke<void>('open_card', { id }),
@@ -25,6 +38,7 @@ export const provider: CardProvider = measurement ? {
 } : {
   getSetup: async () => ({ config: { ...DEFAULT_CONFIG }, hasToken: false, snapshot: null }),
   saveSetup: previewError,
+  setCharacterBackend: previewError,
   refresh: previewError,
   disconnect: previewError,
   openCard: previewError,

@@ -3,6 +3,7 @@ import 'pixi.js/unsafe-eval';
 import { Container, Graphics, Sprite, Texture, WebGLRenderer } from 'pixi.js';
 import { CHARACTER_SIZE, type CharacterRenderer } from './contract';
 import { robotTextureSvg } from './art';
+import { getCharacter, type CharacterId } from '../characters';
 
 function loadImage(source: string, signal: AbortSignal): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -26,7 +27,7 @@ function loadImage(source: string, signal: AbortSignal): Promise<HTMLImageElemen
 }
 
 /** A small dedicated WebGL surface. No Application, shared ticker, or fullscreen canvas. */
-export async function createCharacterRenderer(canvas: HTMLCanvasElement, signal: AbortSignal): Promise<CharacterRenderer> {
+export async function createCharacterRenderer(canvas: HTMLCanvasElement, signal: AbortSignal, characterId: CharacterId = 'robot'): Promise<CharacterRenderer> {
   if (signal.aborted) throw new DOMException('Character initialization canceled', 'AbortError');
   const resolution = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
   const context = canvas.getContext('webgl2', {
@@ -72,18 +73,22 @@ export async function createCharacterRenderer(canvas: HTMLCanvasElement, signal:
       unbind(null);
     }
     if (signal.aborted) throw new DOMException('Character initialization canceled', 'AbortError');
-    image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(robotTextureSvg(resolution))}`, signal);
+    const character = getCharacter(characterId);
+    image = await loadImage(character.image ?? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(robotTextureSvg(resolution))}`, signal);
     if (signal.aborted) throw new DOMException('Character initialization canceled', 'AbortError');
     texture = Texture.from(image);
     const body = new Sprite(texture);
-    body.width = CHARACTER_SIZE.width;
-    body.height = CHARACTER_SIZE.height;
+    const fit = Math.min(CHARACTER_SIZE.width / image.naturalWidth, CHARACTER_SIZE.height / image.naturalHeight);
+    body.width = image.naturalWidth * fit;
+    body.height = image.naturalHeight * fit;
+    body.position.set((CHARACTER_SIZE.width - body.width) / 2, (CHARACTER_SIZE.height - body.height) / 2);
     figure.pivot.set(75, 140);
     figure.position.set(75, 140);
     figure.addChild(body);
     const eyes = new Graphics().roundRect(58, 54, 7, 11, 3.5).roundRect(83, 54, 7, 11, 3.5).fill(0xb8d8b5);
     eyes.pivot.set(74, 60);
     eyes.position.set(74, 60);
+    eyes.visible = characterId === 'robot';
     figure.addChild(eyes);
     const antenna = new Graphics().circle(75, 17, 3.7).fill(0xaecbad);
     antenna.visible = false;
@@ -100,7 +105,7 @@ export async function createCharacterRenderer(canvas: HTMLCanvasElement, signal:
         figure.rotation = frame.state === 'dragging' ? -0.12 : walking ? Math.sin(phase) * 0.018 : 0;
         figure.y = 140 + (frame.state === 'dragging' ? -5 : walking ? -Math.abs(Math.sin(phase)) * 3 : 0);
         eyes.scale.y = frame.blink ? 0.12 : 1;
-        antenna.visible = frame.state === 'browsing';
+        antenna.visible = characterId === 'robot' && frame.state === 'browsing';
         renderer.render({ container: stage, clear: true });
         return true;
       },

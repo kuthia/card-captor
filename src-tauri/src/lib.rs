@@ -1,9 +1,11 @@
+pub mod codex;
 mod model;
 mod notion;
 mod storage;
 
 use model::{
-    AppConfig, CardStatusEditor, CardSummary, FeedSnapshot, SetupStatus, StatusUpdateResult,
+    AppConfig, CardStatusEditor, CardSummary, CharacterId, FeedSnapshot, SetupStatus,
+    StatusUpdateResult,
 };
 use std::{
     path::PathBuf,
@@ -153,6 +155,32 @@ async fn get_setup(state: State<'_, Arc<AppState>>) -> Result<SetupStatus, Strin
 }
 
 #[tauri::command]
+async fn set_character(
+    character_id: CharacterId,
+    state: State<'_, Arc<AppState>>,
+) -> Result<CharacterId, String> {
+    reject_measurement(&state)?;
+    let state = state.inner().clone();
+    blocking(move || {
+        if state
+            .load_error
+            .lock()
+            .map_err(|_| "설정을 읽을 수 없습니다.")?
+            .is_some()
+        {
+            return Err("기존 설정을 읽지 못해 캐릭터를 저장할 수 없습니다. 연결 설정을 먼저 확인해 주세요.".into());
+        }
+        state
+            .store
+            .lock()
+            .map_err(|_| "캐릭터를 저장할 수 없습니다.")?
+            .set_character(&state.path, character_id)?;
+        Ok(character_id)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn save_setup(
     mut config: AppConfig,
     token: Option<String>,
@@ -292,7 +320,10 @@ async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
             .lock()
             .map_err(|_| "연결을 해제할 수 없습니다.")?;
         let next = storage::Store {
-            config: AppConfig::default(),
+            config: AppConfig {
+                character_id: store.config.character_id,
+                ..AppConfig::default()
+            },
             snapshot: None,
         };
         // Keep the configured account recoverable if the OS credential store rejects deletion.
@@ -449,11 +480,13 @@ fn local_navigation(url: &url::Url) -> bool {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             let _ = app.emit("toggle-deck", ());
         }))
         .invoke_handler(tauri::generate_handler![
             get_setup,
+            set_character,
             save_setup,
             refresh_feed,
             disconnect,
@@ -462,6 +495,10 @@ pub fn run() {
             update_card_status,
             set_panel_open,
             measurement_event,
+            codex::get_codex_feed,
+            codex::set_codex_preferences,
+            codex::open_codex_thread,
+            codex::test_codex_alert,
         ])
         .setup(|app| {
             let measurement = parse_measurement_args(
@@ -492,6 +529,11 @@ pub fn run() {
                 load_error: Mutex::new(load_error),
                 measurement,
             }));
+            codex::start(
+                app.handle(),
+                app.path().app_data_dir()?.join("codex.json"),
+                measurement.is_some(),
+            );
             let builder = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",

@@ -1,3 +1,5 @@
+import type { CharacterId } from './characters';
+
 /** Provider-independent presentation contract. Native credentials never cross back into the UI. */
 export interface CardSummary {
   id: string;
@@ -41,6 +43,7 @@ export interface StatusUpdateResult {
 }
 
 export interface AppConfig {
+  characterId: CharacterId;
   viewId: string;
   refreshSeconds: number;
   roamingEnabled: boolean;
@@ -53,6 +56,7 @@ export interface SetupStatus {
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
+  characterId: 'robot',
   viewId: '',
   refreshSeconds: 60,
   roamingEnabled: true,
@@ -60,6 +64,7 @@ export const DEFAULT_CONFIG: AppConfig = {
 
 export interface CardProvider {
   getSetup(): Promise<SetupStatus>;
+  setCharacter(id: CharacterId): Promise<CharacterId>;
   saveSetup(config: AppConfig, token: string | null): Promise<SetupStatus>;
   refresh(): Promise<FeedSnapshot>;
   disconnect(): Promise<void>;

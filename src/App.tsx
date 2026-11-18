@@ -8,6 +8,11 @@ import type { MotionState } from './motion';
 import { CursorInputWriter, POINTER_FAR_MS, pointerPollDelay, startAdaptivePolling, startRoaming } from './activity-policy';
 import { desktop, errorMessage, provider } from './provider';
 import { Robot } from './Robot';
+import { CharacterPicker } from './CharacterPicker';
+import { getCharacter, type CharacterId } from './characters';
+import { CodexPanel } from './CodexPanel';
+import { CODEX_PHASE_LABELS, codexAttention } from './codex';
+import { useCodex } from './useCodex';
 import { RefreshScheduler } from './refresh';
 import { StatusEditor } from './StatusEditor';
 import { StatusOptionsCache } from './status-options-cache';
@@ -28,7 +33,7 @@ function homePosition(bounds: Bounds): Point {
   return clampPoint({ x: bounds.right - 230, y: bounds.bottom - PET.height - 42 }, PET, bounds, 16);
 }
 
-function Icon({ name }: { name: 'close' | 'settings' | 'refresh' | 'arrow' | 'pause' | 'play' }) {
+function Icon({ name }: { name: 'close' | 'settings' | 'refresh' | 'arrow' | 'pause' | 'play' | 'character' | 'back' }) {
   const paths = {
     close: <path d="m6 6 12 12M18 6 6 18" />,
     settings: <><path d="m9 3-1 3-3 1v4l2 1v2l-2 1v4l3 1 1 2h6l1-2 3-1v-4l-2-1v-2l2-1V7l-3-1-1-3Z" /><circle cx="12" cy="12" r="3" /></>,
@@ -36,6 +41,8 @@ function Icon({ name }: { name: 'close' | 'settings' | 'refresh' | 'arrow' | 'pa
     arrow: <><path d="M8 5h11v11M19 5 5 19" /></>,
     pause: <><path d="M8 5v14M16 5v14" /></>,
     play: <path d="m8 5 11 7-11 7Z" />,
+    character: <><path d="M20 13a8 8 0 1 1-9-9M16 2v6m-3-3h6" /><path d="M8 14c1 3 6 3 7 0" /><path d="M8 10h.01M15 10h.01" /></>,
+    back: <path d="m14 5-7 7 7 7" />,
   };
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -51,12 +58,17 @@ function dueDate(value: string): string {
 }
 
 export default function App() {
+  const codexFeed = useCodex();
+  const [activeFeed, setActiveFeed] = useState<'notion' | 'codex'>(measurement ? 'notion' : 'codex');
   const [setup, setSetup] = useState<SetupStatus>(emptySetup);
   const [loaded, setLoaded] = useState(!desktop);
   const [draft, setDraft] = useState<AppConfig>({ ...DEFAULT_CONFIG });
   const [token, setToken] = useState('');
   const [deckOpen, setDeckOpen] = useState(measurement ? measurement.state === 'cards' : !desktop);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [charactersOpen, setCharactersOpen] = useState(false);
+  const [characterPending, setCharacterPending] = useState<CharacterId | null>(null);
+  const [characterError, setCharacterError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -90,7 +102,10 @@ export default function App() {
   boundsRef.current = bounds;
   const connected = setup.hasToken && !!setup.config.viewId;
   const snapshot = setup.snapshot;
-  const panelOpen = deckOpen || settingsOpen;
+  const panelOpen = deckOpen || settingsOpen || charactersOpen;
+  const character = getCharacter(setup.config.characterId);
+  const attention = codexAttention(codexFeed.snapshot);
+  const petCount = activeFeed === 'codex' ? codexFeed.snapshot.tasks.filter(task => !task.stale && ['running', 'needsInput', 'blocked'].includes(task.phase)).length : snapshot?.cards.length ?? 0;
 
   const reportError = useCallback((value: unknown, fallback: string) => {
     if (mounted.current) setError(errorMessage(value, fallback));
@@ -127,7 +142,7 @@ export default function App() {
       setSetup(value);
       setDraft(value.config);
       setLoaded(true);
-      if (desktop && !measurement && !value.hasToken) setSettingsOpen(true);
+      if (desktop && !measurement && !value.hasToken) setDeckOpen(true);
       void refresh();
     }).catch(value => {
       if (canceled) return;
@@ -242,7 +257,7 @@ export default function App() {
     const observer = new ResizeObserver(() => setPanelSize({ width: panel.offsetWidth, height: panel.offsetHeight }));
     observer.observe(panel);
     return () => observer.disconnect();
-  }, [panelOpen, settingsOpen]);
+  }, [charactersOpen, panelOpen, settingsOpen]);
 
   useEffect(() => {
     if (!desktop) return;
@@ -311,7 +326,7 @@ export default function App() {
     if (!panelOpen) return;
     const frame = requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus());
     return () => cancelAnimationFrame(frame);
-  }, [panelOpen, settingsOpen]);
+  }, [charactersOpen, panelOpen, settingsOpen]);
 
   const openSettings = useCallback(() => {
     if (measurement) return;
@@ -319,12 +334,14 @@ export default function App() {
     setDraft({ ...setupRef.current.config });
     setToken('');
     setDeckOpen(false);
+    setCharactersOpen(false);
     setSettingsOpen(true);
   }, [movePet]);
 
   const closePanel = useCallback(() => {
     if (measurement) return;
     setSettingsOpen(false);
+    setCharactersOpen(false);
     setDeckOpen(false);
     setToken('');
     petRef.current?.focus();
@@ -334,9 +351,40 @@ export default function App() {
     if (measurement) return;
     movePet(positionRef.current, true);
     setSettingsOpen(false);
+    setCharactersOpen(false);
     setToken('');
     setDeckOpen(value => !value);
   }, [movePet]);
+
+  const openCharacters = useCallback(() => {
+    if (measurement) return;
+    movePet(positionRef.current, true);
+    setDeckOpen(false);
+    setSettingsOpen(false);
+    setToken('');
+    setCharacterError(null);
+    setCharactersOpen(true);
+  }, [movePet]);
+
+  async function selectCharacter(id: CharacterId) {
+    if (measurement || mutationBusy.current || !loaded || id === setupRef.current.config.characterId) return;
+    mutationBusy.current = true;
+    setCharacterPending(id);
+    setCharacterError(null);
+    try {
+      const selected = await provider.setCharacter(id);
+      if (!mounted.current) return;
+      const next = { ...setupRef.current, config: { ...setupRef.current.config, characterId: selected } };
+      setupRef.current = next;
+      setSetup(next);
+      setDraft(value => ({ ...value, characterId: selected }));
+    } catch (value) {
+      if (mounted.current) setCharacterError(errorMessage(value, '캐릭터를 저장하지 못했어요. 다시 선택해 주세요.'));
+    } finally {
+      mutationBusy.current = false;
+      if (mounted.current) setCharacterPending(null);
+    }
+  }
 
   const toggleRoaming = useCallback(async () => {
     if (measurement) return;
@@ -504,37 +552,59 @@ export default function App() {
     </div>}
     {!desktop && <>
       <div className="preview-heading"><span className="wordmark">card captor<span className="wordmark-dot">.</span></span><span className="preview-label"><span />브라우저 미리보기</span></div>
-      <div className="preview-caption"><span className="eyebrow">A LITTLE DESKTOP COMPANION</span><p>필요한 카드를 챙겨 오는<br />작은 동료.</p><span>캡터를 눌러 카드 덱을 열고, 끌어서 옮겨 보세요.</span></div>
+      <div className="preview-caption"><span className="eyebrow">A LITTLE DESKTOP COMPANION</span><p>필요한 카드를 챙겨 오는<br />작은 동료.</p><span>캐릭터를 눌러 카드 덱을 열고, 끌어서 옮겨 보세요.</span></div>
       <div className="preview-footnote">실제 Notion 연결은 데스크톱 앱에서 사용할 수 있어요.</div>
     </>}
 
     <button ref={petRef} className={`pet ${dragging ? 'pet--dragging' : ''}`} style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
-      aria-label={`캡터, 카드 ${snapshot?.cards.length ?? 0}개. 눌러서 카드 덱 열기. 끌어서 이동.`}
+      aria-label={`${character.name}, ${attention ? `Codex ${CODEX_PHASE_LABELS[attention.phase]}. ` : ''}눌러서 피드 열기. 끌어서 이동.`}
       aria-expanded={panelOpen} aria-controls="captor-panel"
       onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={event => endDrag(event)}
       onPointerCancel={event => endDrag(event, true)} onLostPointerCapture={event => endDrag(event, true)}
       onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}
       onClick={event => { if (event.detail === 0) toggleDeck(); }}
       onContextMenu={event => { event.preventDefault(); openSettings(); }}>
-      <Robot state={mode} count={snapshot?.cards.length ?? 0} paused={hidden || reduceMotion} />
-      <span className="pet-caption"><span className={`signal-dot ${issue ? 'signal-dot--warning' : connected ? 'signal-dot--connected' : ''}`} />{loaded ? stateLabels[mode] : '캡터가 일어나는 중'}</span>
+      <Robot key={character.id} characterId={character.id} state={mode} count={petCount} paused={hidden || reduceMotion} />
+      <span className="pet-caption" data-codex-phase={attention?.phase}><span className={`signal-dot ${attention?.phase === 'needsInput' || attention?.phase === 'blocked' || issue ? 'signal-dot--warning' : attention || connected ? 'signal-dot--connected' : ''}`} />{attention ? CODEX_PHASE_LABELS[attention.phase] : loaded ? stateLabels[mode] : '잠에서 깨는 중'}</span>
     </button>
 
-    {panelOpen && <section id="captor-panel" ref={panelRef} className={`panel ${settingsOpen ? 'panel--settings' : ''}`}
+    {codexFeed.bubble && !panelOpen && <div className="codex-bubble" role="status" aria-live="polite" aria-atomic="true" data-phase={codexFeed.bubble.phase}
+      style={{ left: placePanel(position, PET, { width: 272, height: 68 }, bounds).x, top: placePanel(position, PET, { width: 272, height: 68 }, bounds).y }}>
+      <strong>{codexFeed.bubble.title}</strong><span>{codexFeed.bubble.content}</span>
+    </div>}
+
+    {panelOpen && <section id="captor-panel" ref={panelRef} className={`panel ${settingsOpen || charactersOpen ? 'panel--settings' : ''}`}
       style={{ left: panelPosition.x, top: panelPosition.y, maxHeight: Math.max(180, bounds.bottom - bounds.top - 28) }}
-      aria-label={settingsOpen ? 'Notion 연결 설정' : '내 카드 덱'}>
+      aria-label={charactersOpen ? '캐릭터 선택' : settingsOpen ? 'Notion 연결 설정' : activeFeed === 'codex' ? 'Codex 작업 피드' : '내 카드 덱'}>
       <header className="panel-header">
-        <div><span className="eyebrow">{settingsOpen ? 'MAKE A CONNECTION' : 'YOUR LITTLE DECK'}</span><h1 tabIndex={-1} data-autofocus={!settingsOpen || undefined}>{settingsOpen ? 'Notion 연결하기' : '내 카드 덱'}{!settingsOpen && <span className="card-count">{snapshot?.cards.length ?? 0}</span>}</h1></div>
+        <div><span className="eyebrow">{charactersOpen ? 'CHOOSE YOUR COMPANION' : settingsOpen ? 'MAKE A CONNECTION' : activeFeed === 'codex' ? 'YOUR WORK, CLOSE BY' : 'YOUR LITTLE DECK'}</span><h1 tabIndex={-1} data-autofocus={!settingsOpen || undefined}>{charactersOpen ? '함께할 작은 동료' : settingsOpen ? 'Notion 연결하기' : activeFeed === 'codex' ? 'Codex 작업' : '내 카드 덱'}{!settingsOpen && !charactersOpen && <span className="card-count">{activeFeed === 'codex' ? codexFeed.snapshot.tasks.length : snapshot?.cards.length ?? 0}</span>}</h1></div>
         <div className="header-actions">
-          {!settingsOpen && <button className="icon-button" aria-label="Notion 연결 설정" title="연결 설정" disabled={updatingStatus} onClick={openSettings}><Icon name="settings" /></button>}
+          {charactersOpen ? <button className="icon-button" aria-label="카드 덱으로 돌아가기" title="카드 덱으로" onClick={toggleDeck}><Icon name="back" /></button>
+            : <button className="icon-button" aria-label="캐릭터 선택" title="캐릭터 선택" disabled={saving || updatingStatus || !loaded} onClick={openCharacters}><Icon name="character" /></button>}
+          {!settingsOpen && !charactersOpen && <button className="icon-button" aria-label="Notion 연결 설정" title="연결 설정" disabled={updatingStatus} onClick={openSettings}><Icon name="settings" /></button>}
           <button className="icon-button" aria-label="창 닫기" title="닫기 (Esc)" onClick={closePanel}><Icon name="close" /></button>
         </div>
       </header>
 
-      {issue && <div className="notice notice--warning" role="status"><span aria-hidden="true">!</span><p>{issue}{snapshot && error && <small>마지막으로 가져온 카드는 그대로 보관하고 있어요.</small>}</p></div>}
+      {!charactersOpen && !settingsOpen && <div className="feed-tabs" role="tablist" aria-label="피드 선택" onKeyDown={event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const index = tabs.indexOf(event.target as HTMLButtonElement);
+        if (index < 0) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+        tabs[next].click(); tabs[next].focus();
+      }}>
+        <button role="tab" id="codex-tab" tabIndex={activeFeed === 'codex' ? 0 : -1} aria-selected={activeFeed === 'codex'} aria-controls="codex-content" onClick={() => setActiveFeed('codex')}>Codex 작업{attention?.phase === 'needsInput' && <span className="feed-tab-dot" />}</button>
+        <button role="tab" id="notion-tab" tabIndex={activeFeed === 'notion' ? 0 : -1} aria-selected={activeFeed === 'notion'} aria-controls="notion-content" onClick={() => setActiveFeed('notion')}>Notion 카드</button>
+      </div>}
 
-      {settingsOpen ? <form onSubmit={saveSetup} className="settings-form">
-        <p className="panel-description">평소 쓰던 Notion 뷰의 카드들을<br />캡터가 그대로 챙겨 올게요.</p>
+      {issue && (settingsOpen || activeFeed === 'notion') && <div className="notice notice--warning" role="status"><span aria-hidden="true">!</span><p>{issue}{snapshot && error && <small>마지막으로 가져온 카드는 그대로 보관하고 있어요.</small>}</p></div>}
+
+      {charactersOpen ? <CharacterPicker selected={character.id} pending={characterPending} error={characterError}
+        disabled={!loaded || saving || updatingStatus || characterPending !== null} onSelect={id => void selectCharacter(id)} />
+        : settingsOpen ? <form onSubmit={saveSetup} className="settings-form">
+        <p className="panel-description">평소 쓰던 Notion 뷰의 카드들을<br />{character.name}가 그대로 챙겨 올게요.</p>
         {!desktop && <div className="notice notice--preview"><p>브라우저 미리보기입니다. 토큰 입력과 연결은 데스크톱 앱에서 사용할 수 있어요.</p></div>}
         <label className="field">Notion 뷰 URL 또는 ID
           <input data-autofocus value={draft.viewId} onChange={event => setDraft(value => ({ ...value, viewId: event.target.value }))} placeholder="https://www.notion.so/…?v=…" autoComplete="off" spellCheck={false} disabled={!desktop || saving} required={desktop} />
@@ -549,7 +619,9 @@ export default function App() {
         <p className="privacy-note"><span aria-hidden="true">⌑</span>토큰은 기기의 보안 저장소에 보관해요.</p>
         <button type="submit" className="primary-button" disabled={!desktop || saving}>{saving ? '연결 저장 중…' : '연결하고 카드 가져오기'}<span aria-hidden="true">↗</span></button>
         {setup.hasToken && <button type="button" className="text-button disconnect-button" onClick={() => void disconnect()} disabled={saving}>Notion 연결 해제</button>}
-      </form> : <>
+      </form> : activeFeed === 'codex' ? <div id="codex-content" role="tabpanel" aria-labelledby="codex-tab" className="codex-tab-content">
+        <CodexPanel snapshot={codexFeed.snapshot} error={codexFeed.error} saving={codexFeed.saving} onSave={preferences => void codexFeed.save(preferences)} onError={codexFeed.reportError} />
+      </div> : <div id="notion-content" role="tabpanel" aria-labelledby="notion-tab" className="notion-tab-content">
         <div className="feed-bar"><span className="source-label"><span className="notion-mark">N</span>Notion<span className="source-divider">/</span>{connected ? '연결된 뷰' : '연결 대기'}</span><button className={`icon-button refresh-button ${refreshing ? 'is-refreshing' : ''}`} aria-label="카드 새로고침" title="새로고침" disabled={!desktop || !connected || refreshing || updatingStatus || !online} onClick={() => void refresh()}><Icon name="refresh" /></button></div>
         {statusNotice && <p className="status-notice" role="status">{statusNotice}</p>}
         {snapshot && snapshot.cards.length > 0 ? <ol className="card-list">{snapshot.cards.map((card, index) => <li key={card.id} className="task-card-row">
@@ -569,7 +641,7 @@ export default function App() {
         {snapshot?.warning && <div className="feed-warning" role="status">{snapshot.warning}</div>}
         {snapshot?.hasMore && <p className="more-note">카드가 더 있어요. 목록 일부를 표시하고 있습니다.</p>}
         <footer className="panel-footer"><span className={error && snapshot ? 'stale-label' : ''}>{refreshing ? '카드 새로고침 중…' : lastSuccess ? `${lastSuccess}에 마지막으로 가져왔어요${error ? ' · 이전 카드' : ''}` : desktop ? '연결하면 카드를 가져올게요' : '브라우저 미리보기 · 카드 0개'}</span><button className="icon-button roam-button" aria-label={setup.config.roamingEnabled ? '산책 잠시 멈추기' : '산책 다시 시작하기'} title={setup.config.roamingEnabled ? '산책 잠시 멈추기' : '산책 다시 시작하기'} onClick={() => void toggleRoaming()}><Icon name={setup.config.roamingEnabled ? 'pause' : 'play'} /></button></footer>
-      </>}
+      </div>}
     </section>}
   </main>;
 }

@@ -4,6 +4,14 @@
 
 Tauri 2의 네이티브 계층에 창·자격증명·외부 API 접근을 두고, React UI는 캐릭터와 정규화된 카드만 다룬다. 첫 Provider는 Notion이며 이후 Paca 구현을 추가한다.
 
+Codex 관측은 업무 카드 Provider와 분리된 네이티브 서비스다. `src-tauri/src/codex/protocol.rs`가 로컬 소켓의 발견·소유자 조회·구독·재연결을, `core.rs`가 snapshot/patch 병합·상태 투영·중복 억제를 담당한다. `mod.rs`가 자체 `codex.json` 설정과 OS 알림·번들 사운드 재생을 소유한다. Notion 자격증명과 연결하지 않는다.
+
+UI는 `get_codex_feed`와 `codex-feed` 이벤트로 정규화된 작업·활동만 받고 revision으로 늦은 초기 조회를 폐기한다. Mini 말풍선은 OS 알림 이벤트와 독립적으로 같은 작업 상태를 받아 제목 1줄·최신 진행 내용 1줄로 갱신한다. 진행·입력 대기는 유지하고 완료·실패·중단은 6.5초 후 숨긴다. 타임스탬프만 바뀐 push는 표시 시간을 늘리지 않는다.
+
+`set_codex_preferences`, `test_codex_alert`, `open_codex_thread`를 제공하며 마지막 명령은 작업 또는 최근 활동에 있는 UUID만 허용한다. 팝업 피드의 항목 전체가 대화 열기 버튼이다. 메시지·승인을 보내는 네이티브 명령은 없다. 피드 탭은 Codex와 Notion을 전환하고, 같은 캐릭터 선택과 창 제어를 공유한다.
+
+구독은 같은 UID의 검증된 Unix 소켓으로 제한한다. 프레임·대화당 상태 8 MiB, 작업 12개, 활동 40개, 중복 키 512개를 상한으로 둔다. 단편화된 읽기는 타이머와 경쟁해 취소하지 않는다. revision 누락 시 오래된 상태로 표시하고 재구독한 snapshot을 조용히 기준으로 삼는다. 전체 대화·도구 인자는 파일이나 로그로 보관하지 않으며, 상세 프로토콜·경계는 [Codex 관측](codex-observer.md)을 따른다.
+
 | 계층 | 책임 | 소유하지 않는 것 |
 | --- | --- | --- |
 | 캐릭터 UI | 이동 상태·드래그·카드 탐색·상태 선택·영역별 포인터 판정 | 토큰 영속화·외부 API 호출 |
@@ -32,7 +40,7 @@ flowchart LR
 
 ## 렌더링과 GPU
 
-캐릭터는 PixiJS의 WebGL 렌더러로 그린다. 카드 UI는 React로 유지하며 캐릭터 렌더러의 생성·상태 변경·수동 그리기·해제를 별도 경계에 둔다. 이후 Live2D나 3D를 도입할 때 이 경계에 맞는 렌더러와 리소스를 추가한다. 현재 구현은 자체 2D 캐릭터이며 Live2D·3D 모델은 포함하지 않는다.
+캐릭터는 PixiJS의 WebGL 렌더러로 그린다. 카드 UI는 React로 유지하며 캐릭터 렌더러의 생성·상태 변경·수동 그리기·해제를 별도 경계에 둔다. 캡터의 코드 기반 SVG와 웰루니의 번들 PNG를 같은 렌더러에서 선택하고, 변경 시 이전 렌더러를 해제한다. 이후 Live2D나 3D를 도입할 때 이 경계에 맞는 렌더러와 리소스를 추가한다. Live2D·3D 모델은 포함하지 않는다.
 
 WebGL 캔버스는 캐릭터 크기인 168×160 CSS 픽셀로 제한하고, 배율은 최대 2배로 제한한다. `powerPreference: 'low-power'`를 요청하며 자동 Ticker를 사용하지 않는다. 이 설정은 GPU 선택에 대한 힌트이며 실제 하드웨어 사용이나 소비 전력을 보장하지 않는다. [PixiJS WebGL 옵션](https://pixijs.download/v8.23.0/docs/rendering.ContextSystemOptions.html)
 
@@ -105,4 +113,4 @@ WebGL 초기화 실패나 컨텍스트 손실 시 정적인 SVG로 전환하고 
 | [Mochi](https://github.com/likhith1542/mochi) | Tauri 2, 이동 FSM·드래그 물리·말풍선 영역별 클릭 통과 | 이동·상호작용 패턴 참고. 소스와 캐릭터 리소스의 전체 복제는 하지 않음 |
 | [BongoCat](https://github.com/ayangweb/BongoCat) | 현행 Rust·GPUI 구조의 overlay/platform 분리 | OS별 창·디스플레이·트레이의 책임 경계 참고 |
 
-Mochi 저장소의 라이선스는 MIT, BongoCat은 Apache-2.0이다. BongoCat의 Live2D SDK·모델은 별도 조건이 있으므로 코드 라이선스와 동일하게 취급하지 않는다. 현재 캐릭터는 앱 내부의 자체 코드 기반 그림으로 구성한다. [Mochi 라이선스](https://github.com/likhith1542/mochi/blob/main/LICENSE), [BongoCat 라이선스](https://github.com/ayangweb/BongoCat/blob/master/LICENSE), [Cubism 경계 문서](https://github.com/ayangweb/BongoCat/blob/master/docs/cubism/cubism-sdk-source-and-license.md)
+Mochi 저장소의 라이선스는 MIT, BongoCat은 Apache-2.0이다. BongoCat의 Live2D SDK·모델은 별도 조건이 있으므로 코드 라이선스와 동일하게 취급하지 않는다. 캡터는 앱 내부의 자체 코드 기반 그림이며, 웰루니는 사용자가 지정한 캐릭터보드에서 파생한 번들 이미지다. [Mochi 라이선스](https://github.com/likhith1542/mochi/blob/main/LICENSE), [BongoCat 라이선스](https://github.com/ayangweb/BongoCat/blob/master/LICENSE), [Cubism 경계 문서](https://github.com/ayangweb/BongoCat/blob/master/docs/cubism/cubism-sdk-source-and-license.md)

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MotionState } from './motion';
 import { animateCharacter, type AnimationClock } from './renderer/animation';
-import { ROBOT_BODY, ROBOT_EYES, ROBOT_SHADOW } from './renderer/art';
+import type { CharacterId } from './characters';
+import { CharacterStill } from './CharacterStill';
 import { CHARACTER_SIZE, type CharacterRenderer, type RendererStatus } from './renderer/contract';
 import { RendererLifetime } from './renderer/lifetime';
 
@@ -19,7 +20,7 @@ const rendererLabels: Record<RendererStatus, string> = {
 };
 
 /** Richer character formats can replace the renderer without owning cards or movement. */
-export function Robot({ state, count, paused = false }: { state: MotionState; count: number; paused?: boolean }) {
+export function Robot({ state, count, paused = false, characterId = 'robot' }: { state: MotionState; count: number; paused?: boolean; characterId?: CharacterId }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lifetimeRef = useRef<RendererLifetime<CharacterRenderer> | null>(null);
   const poseRef = useRef({ state, paused });
@@ -28,6 +29,7 @@ export function Robot({ state, count, paused = false }: { state: MotionState; co
   const [generation, setGeneration] = useState(0);
 
   useEffect(() => {
+    setStatus('initializing');
     const canvas = canvasRef.current;
     if (!canvas) return;
     const controller = new AbortController();
@@ -57,7 +59,7 @@ export function Robot({ state, count, paused = false }: { state: MotionState; co
     };
     canvas.addEventListener('webglcontextlost', lost);
     canvas.addEventListener('webglcontextrestored', restored);
-    import('./renderer/pixi').then(module => module.createCharacterRenderer(canvas, controller.signal)).then(renderer => {
+    import('./renderer/pixi').then(module => module.createCharacterRenderer(canvas, controller.signal, characterId)).then(renderer => {
       instance = renderer;
       if (!lifetime.attach(renderer)) return;
       try {
@@ -79,7 +81,7 @@ export function Robot({ state, count, paused = false }: { state: MotionState; co
       lifetime.dispose();
       if (lifetimeRef.current === lifetime) lifetimeRef.current = null;
     };
-  }, []);
+  }, [characterId]);
 
   useEffect(() => {
     const lifetime = lifetimeRef.current;
@@ -98,18 +100,14 @@ export function Robot({ state, count, paused = false }: { state: MotionState; co
         lifetime.retire(renderer);
         return false;
       }
-    }, state, paused, clock);
-  }, [generation, paused, state, status]);
+    }, state, paused || (characterId === 'welluni' && state === 'idle'), clock);
+  }, [characterId, generation, paused, state, status]);
 
   return <span className="robot" style={{ position: 'relative', width: CHARACTER_SIZE.width, height: CHARACTER_SIZE.height }}
-    data-renderer={status} title={rendererLabels[status]} aria-hidden="true">
+    data-renderer={status} data-character={characterId} title={rendererLabels[status]} aria-hidden="true">
     <canvas ref={canvasRef} width={CHARACTER_SIZE.width} height={CHARACTER_SIZE.height}
       style={{ display: 'block', width: CHARACTER_SIZE.width, height: CHARACTER_SIZE.height, visibility: status === 'webgl' ? 'visible' : 'hidden', pointerEvents: 'none' }} />
-    {status !== 'webgl' && <svg viewBox="0 0 168 160" fill="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-      <g dangerouslySetInnerHTML={{ __html: ROBOT_SHADOW }} />
-      <g transform={state === 'dragging' && !paused ? 'rotate(-7 75 140) translate(0 -5)' : undefined}
-        dangerouslySetInnerHTML={{ __html: ROBOT_BODY + ROBOT_EYES }} />
-    </svg>}
+    {status !== 'webgl' && <CharacterStill characterId={characterId} lifted={state === 'dragging' && !paused} />}
     {count > 0 && <svg viewBox="0 0 168 160" fill="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
       <circle cx="140" cy="58" r="12" fill="#343934" stroke="#FFFAEF" strokeWidth="2" />
       <text x="140" y="62" textAnchor="middle" fill="#FFFAEF" fontSize="10" fontFamily="system-ui" fontWeight="700">{count > 99 ? '99+' : count}</text>

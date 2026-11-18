@@ -1,4 +1,4 @@
-use crate::model::{AppConfig, FeedSnapshot};
+use crate::model::{AppConfig, CharacterId, FeedSnapshot};
 use serde::{Deserialize, Serialize};
 use std::{fs, io::Write, path::Path};
 
@@ -13,6 +13,15 @@ pub struct Store {
 }
 
 impl Store {
+    /// Save only appearance; no Notion credentials, feed or connection settings are changed.
+    pub fn set_character(&mut self, path: &Path, character_id: CharacterId) -> Result<(), String> {
+        let mut next = self.clone();
+        next.config.character_id = character_id;
+        next.save(path)?;
+        *self = next;
+        Ok(())
+    }
+
     /// `path` is the app's state file, not a directory. Credentials are never serialized.
     pub fn load(path: &Path) -> Result<Self, String> {
         match fs::read(path) {
@@ -83,6 +92,39 @@ pub fn delete_token() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn character_selection_migrates_old_settings_and_preserves_connection_and_feed() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        fs::write(&path, r#"{"config":{"viewId":"existing-view","refreshSeconds":120,"roamingEnabled":false},"snapshot":{"cards":[],"refreshedAt":"2026-11-18T00:00:00Z","hasMore":false}}"#).unwrap();
+        let mut store = Store::load(&path).unwrap();
+        assert_eq!(store.config.character_id, CharacterId::Robot);
+        let snapshot = store.snapshot.clone();
+        store.set_character(&path, CharacterId::Welluni).unwrap();
+        let loaded = Store::load(&path).unwrap();
+        assert_eq!(loaded.config.character_id, CharacterId::Welluni);
+        assert_eq!(loaded.config.view_id, "existing-view");
+        assert_eq!(loaded.config.refresh_seconds, 120);
+        assert!(!loaded.config.roaming_enabled);
+        assert_eq!(loaded.snapshot, snapshot);
+        assert!(
+            serde_json::from_str::<CharacterId>(r#""https://untrusted.test/pet.svg""#).is_err()
+        );
+    }
+
+    #[test]
+    fn failed_character_save_keeps_the_previous_selection() {
+        let dir = tempfile::tempdir().unwrap();
+        let blocked = dir.path().join("file-not-directory");
+        fs::write(&blocked, "unchanged").unwrap();
+        let mut store = Store::default();
+        assert!(store
+            .set_character(&blocked.join("config.json"), CharacterId::Welluni)
+            .is_err());
+        assert_eq!(store.config.character_id, CharacterId::Robot);
+        assert_eq!(fs::read_to_string(blocked).unwrap(), "unchanged");
+    }
 
     #[test]
     fn state_roundtrip_replaces_existing_file_and_keeps_credentials_out() {

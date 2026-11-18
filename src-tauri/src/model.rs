@@ -2,9 +2,18 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CharacterId {
+    #[default]
+    Robot,
+    Welluni,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppConfig {
+    pub character_id: CharacterId,
     pub view_id: String,
     pub refresh_seconds: u32,
     pub roaming_enabled: bool,
@@ -13,6 +22,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            character_id: CharacterId::default(),
             view_id: String::new(),
             refresh_seconds: 60,
             roaming_enabled: true,

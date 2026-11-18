@@ -1,14 +1,19 @@
 import welluniImage from './assets/characters/welluni.png';
 
 export type CharacterId = 'robot' | 'welluni';
+export type CharacterSelection = CharacterId | 'rive';
 
 export const CHARACTERS = [
   { id: 'robot', name: '캡터', role: '작은 카드 배달부', description: '필요한 카드를 꼼꼼히 챙겨요.', image: null },
   { id: 'welluni', name: '웰루니', role: '좋은잠 웰룬의 막내 엔지니어', description: '초승달을 달고 곁에서 함께해요.', image: welluniImage },
 ] as const;
 
-export function getCharacter(id: CharacterId) {
-  return CHARACTERS.find(character => character.id === id) ?? CHARACTERS[0];
+export const CHARACTER_CHOICES = [...CHARACTERS,
+  { id: 'rive', name: 'Centaur', role: 'Rive의 작은 동료', description: '부드러운 모션으로 함께해요.', image: null },
+] as const;
+
+export function getCharacter(id: CharacterSelection) {
+  return CHARACTER_CHOICES.find(character => character.id === id) ?? CHARACTERS[0];
 }
 
 const PREVIEW_KEY = 'card-captor.character';

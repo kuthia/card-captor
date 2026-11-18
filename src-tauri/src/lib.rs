@@ -4,8 +4,8 @@ mod notion;
 mod storage;
 
 use model::{
-    AppConfig, CardStatusEditor, CardSummary, CharacterId, FeedSnapshot, SetupStatus,
-    StatusUpdateResult,
+    AppConfig, CardStatusEditor, CardSummary, CharacterBackend, CharacterId, FeedSnapshot,
+    SetupStatus, StatusUpdateResult,
 };
 use std::{
     path::PathBuf,
@@ -25,6 +25,7 @@ struct AppState {
     operation: tokio::sync::Mutex<()>,
     load_error: Mutex<Option<String>>,
     measurement: Option<MeasurementState>,
+    character_validation: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
@@ -59,11 +60,121 @@ fn measurement_startup_script(state: MeasurementState) -> String {
     format!("Object.defineProperty(window, '__CARD_CAPTOR_MEASUREMENT__', {{ value: {config}, writable: false, configurable: false }});")
 }
 
-fn reject_measurement(state: &AppState) -> Result<(), String> {
+fn parse_validation_args(enabled: bool, args: &[String]) -> Result<bool, &'static str> {
+    if args
+        .iter()
+        .any(|argument| argument.starts_with("--character-validation="))
+    {
+        return Err("캐릭터 검증 옵션은 값을 받지 않습니다.");
+    }
+    let flags = args
+        .iter()
+        .filter(|argument| argument.as_str() == "--character-validation")
+        .count();
+    if flags == 0 {
+        return Ok(false);
+    }
+    if !enabled {
+        return Err("캐릭터 검증 feature가 없는 빌드입니다.");
+    }
+    if flags != 1
+        || args.iter().any(|argument| {
+            argument == "--measurement-state" || argument.starts_with("--measurement-state=")
+        })
+    {
+        return Err("캐릭터 검증 모드와 측정 모드는 함께 실행할 수 없습니다.");
+    }
+    Ok(true)
+}
+
+fn validation_startup_script() -> &'static str {
+    "Object.defineProperty(window, '__CARD_CAPTOR_CHARACTER_VALIDATION__', { value: Object.freeze({version: 1, backend: 'rive'}), writable: false, configurable: false });"
+}
+
+fn reject_external_actions(state: &AppState) -> Result<(), String> {
     if state.measurement.is_some() {
         return Err("측정 모드에서는 연결 저장소와 외부 동작을 사용하지 않습니다.".into());
     }
+    if state.character_validation {
+        return Err("캐릭터 검증 모드에서는 연결 저장소와 외부 동작을 사용하지 않습니다.".into());
+    }
     Ok(())
+}
+
+fn initial_store(path: &std::path::Path, isolated: bool) -> (storage::Store, Option<String>) {
+    if isolated {
+        return (storage::Store::default(), None);
+    }
+    match storage::Store::load(path) {
+        Ok(store) => (store, None),
+        Err(error) => (storage::Store::default(), Some(error)),
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ValidationEvent {
+    mode: String,
+    renderer: String,
+    visible: bool,
+    frame_count: Option<u64>,
+    x: Option<f64>,
+    y: Option<f64>,
+}
+
+impl ValidationEvent {
+    fn validate(&self) -> Result<(), String> {
+        if !["idle", "walk", "dragging", "browsing", "suspended"].contains(&self.mode.as_str())
+            || ![
+                "initializing",
+                "webgl",
+                "rive",
+                "svg-fallback",
+                "context-lost",
+            ]
+            .contains(&self.renderer.as_str())
+            || self
+                .frame_count
+                .is_some_and(|value| value > 9_007_199_254_740_991)
+            || self.x.is_some() != self.y.is_some()
+            || [self.x, self.y]
+                .into_iter()
+                .flatten()
+                .any(|value| !value.is_finite() || value.abs() > 100_000.0)
+        {
+            return Err("캐릭터 검증 상태가 올바르지 않습니다.".into());
+        }
+        Ok(())
+    }
+}
+
+#[tauri::command]
+fn validation_event(event: ValidationEvent, state: State<'_, Arc<AppState>>) -> Result<(), String> {
+    if !state.character_validation {
+        return Err("캐릭터 검증 모드가 아닙니다.".into());
+    }
+    event.validate()?;
+    let Some(path) = std::env::var_os("CARD_CAPTOR_VALIDATION_LOG") else {
+        return Ok(());
+    };
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|_| "캐릭터 검증 로그를 열 수 없습니다.".to_string())?;
+    let entry = serde_json::json!({
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "pid": std::process::id(),
+        "mode": event.mode,
+        "renderer": event.renderer,
+        "visible": event.visible,
+        "frameCount": event.frame_count,
+        "x": event.x,
+        "y": event.y,
+        "syntheticCardCount": 6,
+    });
+    writeln!(file, "{entry}").map_err(|_| "캐릭터 검증 로그를 쓸 수 없습니다.".into())
 }
 
 #[derive(serde::Deserialize)]
@@ -127,6 +238,7 @@ async fn blocking<T: Send + 'static>(
 }
 
 fn setup_status(state: &AppState) -> Result<SetupStatus, String> {
+    reject_external_actions(state)?;
     let has_token = storage::get_token()?.is_some();
     let store = state.store.lock().map_err(|_| "설정을 읽을 수 없습니다.")?;
     Ok(SetupStatus {
@@ -138,7 +250,7 @@ fn setup_status(state: &AppState) -> Result<SetupStatus, String> {
 
 #[tauri::command]
 async fn get_setup(state: State<'_, Arc<AppState>>) -> Result<SetupStatus, String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let state = state.inner().clone();
     blocking(move || {
         if let Some(error) = state
@@ -159,7 +271,8 @@ async fn set_character(
     character_id: CharacterId,
     state: State<'_, Arc<AppState>>,
 ) -> Result<CharacterId, String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
+    let _operation = state.operation.lock().await;
     let state = state.inner().clone();
     blocking(move || {
         if state
@@ -186,7 +299,7 @@ async fn save_setup(
     token: Option<String>,
     state: State<'_, Arc<AppState>>,
 ) -> Result<SetupStatus, String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let _operation = state.operation.lock().await;
     if !config.view_id.trim().is_empty() {
         config.view_id = model::normalize_view_id(&config.view_id)?;
@@ -250,6 +363,38 @@ async fn save_setup(
     .await
 }
 
+fn persist_character_backend(
+    state: &AppState,
+    backend: CharacterBackend,
+) -> Result<CharacterBackend, String> {
+    reject_external_actions(state)?;
+    if let Some(error) = state
+        .load_error
+        .lock()
+        .map_err(|_| "설정을 읽을 수 없습니다.")?
+        .clone()
+    {
+        // Never overwrite an unreadable account file with a default visual preference.
+        return Err(error);
+    }
+    state
+        .store
+        .lock()
+        .map_err(|_| "설정을 저장할 수 없습니다.")?
+        .set_character_backend(&state.path, backend)
+}
+
+#[tauri::command]
+async fn set_character_backend(
+    backend: CharacterBackend,
+    state: State<'_, Arc<AppState>>,
+) -> Result<CharacterBackend, String> {
+    reject_external_actions(&state)?;
+    let _operation = state.operation.lock().await;
+    let state = state.inner().clone();
+    blocking(move || persist_character_backend(&state, backend)).await
+}
+
 struct RefreshGuard(Arc<AppState>);
 impl Drop for RefreshGuard {
     fn drop(&mut self) {
@@ -259,7 +404,7 @@ impl Drop for RefreshGuard {
 
 #[tauri::command]
 async fn refresh_feed(state: State<'_, Arc<AppState>>) -> Result<FeedSnapshot, String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let state = state.inner().clone();
     if state
         .refreshing
@@ -311,7 +456,7 @@ async fn refresh_feed(state: State<'_, Arc<AppState>>) -> Result<FeedSnapshot, S
 
 #[tauri::command]
 async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let _operation = state.operation.lock().await;
     let state = state.inner().clone();
     blocking(move || {
@@ -322,6 +467,7 @@ async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
         let next = storage::Store {
             config: AppConfig {
                 character_id: store.config.character_id,
+                character_backend: store.config.character_backend,
                 ..AppConfig::default()
             },
             snapshot: None,
@@ -353,7 +499,7 @@ async fn get_card_status(
     id: String,
     state: State<'_, Arc<AppState>>,
 ) -> Result<CardStatusEditor, String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let _operation = state.operation.lock().await;
     current_card(&state, &id)?;
     let token = blocking(storage::get_token)
@@ -369,7 +515,7 @@ async fn update_card_status(
     option_id: String,
     state: State<'_, Arc<AppState>>,
 ) -> Result<StatusUpdateResult, String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let _operation = state.operation.lock().await;
     current_card(&state, &id)?;
     let token = blocking(storage::get_token)
@@ -422,7 +568,7 @@ fn allowed_notion_url(value: &str) -> bool {
 
 #[tauri::command]
 async fn open_card(id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    reject_measurement(&state)?;
+    reject_external_actions(&state)?;
     let url = state
         .store
         .lock()
@@ -488,6 +634,7 @@ pub fn run() {
             get_setup,
             set_character,
             save_setup,
+            set_character_backend,
             refresh_feed,
             disconnect,
             open_card,
@@ -499,27 +646,17 @@ pub fn run() {
             codex::set_codex_preferences,
             codex::open_codex_thread,
             codex::test_codex_alert,
+            validation_event,
         ])
         .setup(|app| {
-            let measurement = parse_measurement_args(
-                cfg!(feature = "measurement"),
-                &std::env::args().collect::<Vec<_>>(),
-            );
+            let args = std::env::args().collect::<Vec<_>>();
+            let character_validation =
+                parse_validation_args(cfg!(feature = "character-validation"), &args)
+                    .map_err(std::io::Error::other)?;
+            let measurement = parse_measurement_args(cfg!(feature = "measurement"), &args);
             let path = app.path().app_data_dir()?.join("config.json");
-            let (store, load_error) = if measurement.is_some() {
-                (storage::Store::default(), None)
-            } else {
-                match storage::Store::load(&path) {
-                    Ok(store) => (store, None),
-                    Err(error) => (
-                        storage::Store {
-                            config: AppConfig::default(),
-                            snapshot: None,
-                        },
-                        Some(error),
-                    ),
-                }
-            };
+            let (store, load_error) =
+                initial_store(&path, measurement.is_some() || character_validation);
             app.manage(Arc::new(AppState {
                 store: Mutex::new(store),
                 path,
@@ -528,11 +665,12 @@ pub fn run() {
                 operation: tokio::sync::Mutex::new(()),
                 load_error: Mutex::new(load_error),
                 measurement,
+                character_validation,
             }));
             codex::start(
                 app.handle(),
                 app.path().app_data_dir()?.join("codex.json"),
-                measurement.is_some(),
+                measurement.is_some() || character_validation,
             );
             let builder = tauri::WebviewWindowBuilder::new(
                 app,
@@ -551,7 +689,9 @@ pub fn run() {
             .focusable(false)
             .visible_on_all_workspaces(true)
             .on_navigation(local_navigation);
-            let builder = if let Some(state) = measurement {
+            let builder = if character_validation {
+                builder.initialization_script(validation_startup_script())
+            } else if let Some(state) = measurement {
                 builder.initialization_script(measurement_startup_script(state))
             } else {
                 builder
@@ -643,13 +783,18 @@ mod tests {
             operation: tokio::sync::Mutex::new(()),
             load_error: Mutex::new(None),
             measurement: None,
+            character_validation: false,
         };
         assert_eq!(current_card(&state, "current-card").unwrap(), card);
         assert!(current_card(&state, "arbitrary-page-id").is_err());
         state.store.lock().unwrap().snapshot = None;
         assert!(current_card(&state, "current-card").is_err());
         state.measurement = Some(MeasurementState::Cards);
-        assert!(reject_measurement(&state).is_err());
+        assert!(reject_external_actions(&state).is_err());
+        state.measurement = None;
+        state.character_validation = true;
+        assert!(reject_external_actions(&state).is_err());
+        assert!(setup_status(&state).is_err());
     }
 
     #[test]
@@ -693,6 +838,138 @@ mod tests {
         assert!(script.contains("\"cardCount\":20"));
         assert!(!script.contains("token"));
         assert!(!script.contains("fetch"));
+    }
+
+    #[test]
+    fn interactive_validation_requires_both_gates_and_rejects_ambiguous_launches() {
+        let args = vec!["card-captor".into(), "--character-validation".into()];
+        assert_eq!(parse_validation_args(true, &args), Ok(true));
+        assert!(parse_validation_args(false, &args).is_err());
+        for enabled in [false, true] {
+            assert_eq!(
+                parse_validation_args(enabled, &["card-captor".into()]),
+                Ok(false)
+            );
+        }
+        for args in [
+            vec![
+                "--character-validation".into(),
+                "--character-validation".into(),
+            ],
+            vec!["--character-validation=true".into()],
+            vec![
+                "--character-validation".into(),
+                "--measurement-state".into(),
+                "idle".into(),
+            ],
+            vec![
+                "--character-validation".into(),
+                "--measurement-state=idle".into(),
+            ],
+        ] {
+            assert!(parse_validation_args(true, &args).is_err());
+        }
+    }
+
+    #[test]
+    fn character_preference_is_guarded_and_does_not_repair_a_broken_account_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let mut state = AppState {
+            store: Mutex::new(storage::Store::default()),
+            path,
+            revision: AtomicU64::new(42),
+            refreshing: AtomicBool::new(false),
+            operation: tokio::sync::Mutex::new(()),
+            load_error: Mutex::new(None),
+            measurement: Some(MeasurementState::Cards),
+            character_validation: false,
+        };
+        assert!(persist_character_backend(&state, CharacterBackend::Rive).is_err());
+        assert!(!state.path.exists());
+        state.measurement = None;
+        state.character_validation = true;
+        assert!(persist_character_backend(&state, CharacterBackend::Rive).is_err());
+        assert!(!state.path.exists());
+        state.character_validation = false;
+        assert_eq!(
+            persist_character_backend(&state, CharacterBackend::Rive).unwrap(),
+            CharacterBackend::Rive
+        );
+        assert_eq!(state.revision.load(Ordering::Acquire), 42);
+        let saved = std::fs::read(&state.path).unwrap();
+        let error = "저장된 설정을 읽을 수 없습니다.".to_string();
+        *state.load_error.lock().unwrap() = Some(error.clone());
+        assert_eq!(
+            persist_character_backend(&state, CharacterBackend::Robot),
+            Err(error.clone())
+        );
+        assert_eq!(
+            state.store.lock().unwrap().config.character_backend,
+            CharacterBackend::Rive
+        );
+        assert_eq!(*state.load_error.lock().unwrap(), Some(error));
+        assert_eq!(std::fs::read(&state.path).unwrap(), saved);
+    }
+
+    #[test]
+    fn validation_isolates_the_store_and_injects_only_its_fixed_backend() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        // An invalid account file would fail ordinary startup; validation must ignore it.
+        let saved_bytes = b"private-corrupt-account-fixture";
+        std::fs::write(&path, saved_bytes).unwrap();
+        let (store, error) = initial_store(&path, true);
+        assert!(error.is_none());
+        assert_eq!(store.config, AppConfig::default());
+        assert!(store.snapshot.is_none());
+        assert_eq!(std::fs::read(&path).unwrap(), saved_bytes);
+        assert!(initial_store(&path, false).1.is_some());
+        let script = validation_startup_script();
+        assert!(script.contains("Object.freeze({version: 1, backend: 'rive'})"));
+        assert!(script.contains("writable: false, configurable: false"));
+        assert!(!script.contains("token"));
+        assert!(!script.contains("fetch"));
+    }
+
+    #[test]
+    fn validation_events_accept_only_bounded_diagnostics() {
+        let valid = serde_json::json!({
+            "mode": "dragging", "renderer": "rive", "visible": true,
+            "frameCount": 120, "x": 400.5, "y": 250.0
+        });
+        assert!(serde_json::from_value::<ValidationEvent>(valid.clone())
+            .unwrap()
+            .validate()
+            .is_ok());
+        for (key, invalid) in [
+            ("mode", serde_json::json!("arbitrary-page-title")),
+            ("renderer", serde_json::json!("unknown")),
+            ("frameCount", serde_json::json!(9_007_199_254_740_992_u64)),
+            ("x", serde_json::json!(100_001)),
+            ("y", serde_json::Value::Null),
+        ] {
+            let mut event = valid.clone();
+            event[key] = invalid;
+            assert!(serde_json::from_value::<ValidationEvent>(event)
+                .unwrap()
+                .validate()
+                .is_err());
+        }
+        let mut unknown = valid;
+        unknown["cardTitle"] = serde_json::json!("synthetic");
+        assert!(serde_json::from_value::<ValidationEvent>(unknown).is_err());
+        let mut non_finite = ValidationEvent {
+            mode: "idle".into(),
+            renderer: "rive".into(),
+            visible: false,
+            frame_count: None,
+            x: Some(f64::NAN),
+            y: Some(0.0),
+        };
+        assert!(non_finite.validate().is_err());
+        non_finite.x = Some(f64::INFINITY);
+        assert!(non_finite.validate().is_err());
     }
 
     #[test]

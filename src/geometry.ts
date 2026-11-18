@@ -25,8 +25,18 @@ export function containsPoint(point: Point, rect: Bounds, padding = 0): boolean 
 export function placePanel(pet: Point, petSize: Size, panel: Size, bounds: Bounds): Point {
   const above = pet.y - panel.height - 8;
   const below = pet.y + petSize.height + 8;
+  const fitsAbove = above >= bounds.top + 12;
+  const fitsBelow = below + panel.height <= bounds.bottom - 12;
+  // A tall deck near the screen center must not cover the character's drag target.
+  if (!fitsAbove && !fitsBelow) {
+    const right = pet.x + petSize.width + 12;
+    const left = pet.x - panel.width - 12;
+    const side = right + panel.width <= bounds.right - 12 ? right
+      : left >= bounds.left + 12 ? left : null;
+    if (side !== null) return clampPoint({ x: side, y: pet.y + (petSize.height - panel.height) / 2 }, panel, bounds);
+  }
   return clampPoint({
     x: pet.x + petSize.width / 2 - panel.width / 2,
-    y: above >= bounds.top + 12 ? above : below,
+    y: fitsAbove ? above : below,
   }, panel, bounds);
 }

@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-18",
+  "platform": "macOS arm64",
+  "macOS": "27.2.1",
+  "mode": "normal",
+  "applicationArguments": [],
+  "savedCharacterBackend": "rive",
+  "cardCount": 5,
+  "lastSuccessfulRefresh": "2026-11-18T04:59:14Z",
+  "verified": {
+    "realNotionFeed": true,
+    "manualRefresh": true,
+    "persistedAcrossRelaunch": true,
+    "robotRiveRoundTrip": true
+  },
+  "tests": {
+    "frontend": 57,
+    "native": 33
+  },
+  "buildCommand": "pnpm desktop:build --bundles app",
+  "binarySha256": "77e5ff187e198c28e13c371a294bbad9edaf0d256b16ddff5daf6550538e20a2",
+  "sourceSha256": {
+    "src/App.tsx": "8e13d32f8101ca903e8566d07db7a16519cc827b963408871a9dda28283dc291",
+    "src/contracts.ts": "99847974b89b294585239ab3a7b9384f1860c50f990083505fb88992833e9725",
+    "src/provider.ts": "2703cf34eff58daeb6d36c68a3cca60c416dbd26de60986be48b8fbaa3399df5",
+    "src-tauri/src/lib.rs": "eaf7eb8f3de166aace40a083d15ae0f994b0bb8616c52e5cee3d2fc76656c522",
+    "src-tauri/src/model.rs": "876880155f2112800b1f3267004a4b05247d2b83245cdd32fe08c9cfd37b7e29",
+    "src-tauri/src/storage.rs": "6371e60c8f5ded2563185e290cfa7147dccad228f226809cf3089a179ac4f572"
+  }
+}

@@ -1,4 +1,4 @@
-use crate::model::{AppConfig, CharacterId, FeedSnapshot};
+use crate::model::{AppConfig, CharacterBackend, CharacterId, FeedSnapshot};
 use serde::{Deserialize, Serialize};
 use std::{fs, io::Write, path::Path};
 
@@ -17,9 +17,23 @@ impl Store {
     pub fn set_character(&mut self, path: &Path, character_id: CharacterId) -> Result<(), String> {
         let mut next = self.clone();
         next.config.character_id = character_id;
+        next.config.character_backend = CharacterBackend::Robot;
         next.save(path)?;
         *self = next;
         Ok(())
+    }
+
+    /// Visual preferences never read credentials or replace account/feed data.
+    pub fn set_character_backend(
+        &mut self,
+        path: &Path,
+        backend: CharacterBackend,
+    ) -> Result<CharacterBackend, String> {
+        let mut next = self.clone();
+        next.config.character_backend = backend;
+        next.save(path)?;
+        *self = next;
+        Ok(backend)
     }
 
     /// `path` is the app's state file, not a directory. Credentials are never serialized.
@@ -149,5 +163,94 @@ mod tests {
         fs::write(&path, "private-title-not-valid-json").unwrap();
         let error = Store::load(&path).unwrap_err();
         assert!(!error.contains("private-title"));
+    }
+
+    #[test]
+    fn character_preference_preserves_the_account_and_feed_across_restart() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        // An actual old-shaped state fixture, not a newly serialized default.
+        let old = serde_json::json!({
+            "config": {
+                "viewId": "a3f1b2c4-5678-4def-abcd-1234567890ab",
+                "refreshSeconds": 120,
+                "roamingEnabled": false
+            },
+            "snapshot": {
+                "cards": [{"id":"synthetic", "source":"notion", "title":"보존할 합성 카드", "url":"https://www.notion.so/synthetic"}],
+                "refreshedAt": "2026-11-18T00:00:00Z", "hasMore": true,
+                "warning": "합성 경고"
+            }
+        });
+        fs::write(&path, serde_json::to_vec(&old).unwrap()).unwrap();
+        let mut store = Store::load(&path).unwrap();
+        assert_eq!(store.config.character_backend, CharacterBackend::Robot);
+        assert_eq!(
+            store
+                .set_character_backend(&path, CharacterBackend::Rive)
+                .unwrap(),
+            CharacterBackend::Rive
+        );
+        let restarted = Store::load(&path).unwrap();
+        assert_eq!(restarted.config, store.config);
+        assert_eq!(restarted.snapshot, store.snapshot);
+        let mut saved = serde_json::to_value(restarted).unwrap();
+        assert_eq!(saved["config"]["characterBackend"], "rive");
+        saved["config"]
+            .as_object_mut()
+            .unwrap()
+            .remove("characterBackend");
+        assert_eq!(saved["config"]["characterId"], "robot");
+        saved["config"]
+            .as_object_mut()
+            .unwrap()
+            .remove("characterId");
+        assert_eq!(saved, old);
+        assert!(saved.get("token").is_none());
+    }
+
+    #[test]
+    fn switching_between_rive_welluni_and_robot_preserves_the_account() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let mut store = Store::default();
+        store.config.view_id = "existing-view".into();
+        store.set_character(&path, CharacterId::Welluni).unwrap();
+        store
+            .set_character_backend(&path, CharacterBackend::Rive)
+            .unwrap();
+        let mut restarted = Store::load(&path).unwrap();
+        assert_eq!(restarted.config.character_backend, CharacterBackend::Rive);
+        assert_eq!(restarted.config.character_id, CharacterId::Welluni);
+        restarted
+            .set_character(&path, CharacterId::Welluni)
+            .unwrap();
+        assert_eq!(
+            Store::load(&path).unwrap().config.character_backend,
+            CharacterBackend::Robot
+        );
+        restarted.set_character(&path, CharacterId::Robot).unwrap();
+        let config = Store::load(&path).unwrap().config;
+        assert_eq!(config.character_id, CharacterId::Robot);
+        assert_eq!(config.character_backend, CharacterBackend::Robot);
+        assert_eq!(config.view_id, "existing-view");
+    }
+
+    #[test]
+    fn failed_character_preference_save_keeps_the_previous_memory_and_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let mut store = Store::default();
+        store.config.refresh_seconds = 120;
+        store.save(&path).unwrap();
+        let original = fs::read(&path).unwrap();
+        let original_config = store.config.clone();
+        // A file cannot be the parent directory, consistently on macOS/Windows.
+        let invalid_path = path.join("blocked.json");
+        assert!(store
+            .set_character_backend(&invalid_path, CharacterBackend::Rive)
+            .is_err());
+        assert_eq!(store.config, original_config);
+        assert_eq!(fs::read(&path).unwrap(), original);
     }
 }

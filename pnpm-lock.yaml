@@ -175,6 +175,9 @@ importers:
 
   .:
     dependencies:
+      '@rive-app/webgl2-advanced':
+        specifier: 2.51.0
+        version: 2.51.0
       '@tauri-apps/api':
         specifier: 2.12.5
         version: 2.12.5
@@ -240,6 +243,9 @@ packages:
 
   '@oxc-project/types@0.156.0':
     resolution: {integrity: sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==}
+
+  '@rive-app/webgl2-advanced@2.51.0':
+    resolution: {integrity: sha512-bnJGa4+qPZeBY/4500tXjpHlf6YVA45pVh49xMs0vGUpClUDkLgsVuREVlsasc4OicpszI9toKZofCWjcUj8Pw==}
 
   '@rolldown/binding-android-arm-eabi@1.2.19':
     resolution: {integrity: sha512-e+Ebe0WT+9tbXmNKPIiC8YrWAHYwug3m6i4p3rZGGulfZri1jtI4HslT+OZnFf/OIHowWF71DTlHwXBP2SiA7A==}
@@ -936,6 +942,8 @@ snapshots:
     optional: true
 
   '@oxc-project/types@0.156.0': {}
+
+  '@rive-app/webgl2-advanced@2.51.0': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.19':
     optional: true

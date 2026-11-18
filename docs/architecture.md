@@ -40,6 +40,8 @@ flowchart LR
 
 ## 렌더링과 GPU
 
+캐릭터 선택 패널은 캡터·웰루니·Rive Centaur를 하나의 선택 목록으로 제공한다. 기존 `characterBackend` 설정은 유지하고, `robot` 경로에서 `characterId`로 캡터·웰루니를 선택한다. 두 정적 캐릭터로 전환할 때는 backend도 같은 저장 작업에서 `robot`으로 바꾼다. Rive 전환은 기존 정적 캐릭터 ID를 보존한다. 캐릭터 검증 모드는 로컬 선택만 바꾸고 Codex observer·알림·URI 실행도 차단한다.
+
 캐릭터는 PixiJS의 WebGL 렌더러로 그린다. 카드 UI는 React로 유지하며 캐릭터 렌더러의 생성·상태 변경·수동 그리기·해제를 별도 경계에 둔다. 캡터의 코드 기반 SVG와 웰루니의 번들 PNG를 같은 렌더러에서 선택하고, 변경 시 이전 렌더러를 해제한다. 이후 Live2D나 3D를 도입할 때 이 경계에 맞는 렌더러와 리소스를 추가한다. Live2D·3D 모델은 포함하지 않는다.
 
 WebGL 캔버스는 캐릭터 크기인 168×160 CSS 픽셀로 제한하고, 배율은 최대 2배로 제한한다. `powerPreference: 'low-power'`를 요청하며 자동 Ticker를 사용하지 않는다. 이 설정은 GPU 선택에 대한 힌트이며 실제 하드웨어 사용이나 소비 전력을 보장하지 않는다. [PixiJS WebGL 옵션](https://pixijs.download/v8.23.0/docs/rendering.ContextSystemOptions.html)

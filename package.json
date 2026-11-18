@@ -13,9 +13,12 @@
     "test": "vitest run",
     "tauri": "node scripts/tauri.mjs",
     "desktop": "node scripts/tauri.mjs dev",
-    "desktop:build": "node scripts/tauri.mjs build"
+    "desktop:build": "node scripts/tauri.mjs build",
+    "desktop:rive": "node scripts/tauri.mjs dev --features character-validation -- -- --character-validation",
+    "desktop:build:rive": "node scripts/tauri.mjs build --features character-validation"
   },
   "dependencies": {
+    "@rive-app/webgl2-advanced": "2.51.0",
     "@tauri-apps/api": "2.12.5",
     "pixi.js": "8.23.0",
     "react": "19.3.1",

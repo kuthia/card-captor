@@ -2,6 +2,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { desktop } from './provider';
 import { measurement } from './benchmark';
+import { characterValidation } from './validation';
+
+const isolated = !!measurement || characterValidation;
 
 export type CodexPhase = 'running' | 'needsInput' | 'ready' | 'blocked' | 'interrupted' | 'idle';
 export interface CodexPreferences { enabled: boolean; notifications: boolean; sound: boolean }
@@ -33,22 +36,23 @@ const subscribers = new Set<(snapshot: CodexSnapshot) => void>();
 function publishPreview() { preview = { ...preview, revision: preview.revision + 1 }; subscribers.forEach(fn => fn(preview)); }
 
 export const codex = {
-  get: (): Promise<CodexSnapshot> => desktop && !measurement ? invoke('get_codex_feed') : Promise.resolve(preview),
+  get: (): Promise<CodexSnapshot> => desktop && !isolated ? invoke('get_codex_feed') : Promise.resolve(preview),
   subscribe: async (accept: (snapshot: CodexSnapshot) => void): Promise<() => void> => {
-    if (desktop && !measurement) return listen<CodexSnapshot>('codex-feed', event => accept(event.payload));
+    if (desktop && !isolated) return listen<CodexSnapshot>('codex-feed', event => accept(event.payload));
     subscribers.add(accept); return () => { subscribers.delete(accept); };
   },
   save: async (preferences: CodexPreferences): Promise<CodexSnapshot> => {
-    if (desktop && !measurement) return invoke('set_codex_preferences', { preferences });
+    if (isolated) throw new Error('검증·측정 모드에서는 Codex 설정을 변경하지 않습니다.');
+    if (desktop) return invoke('set_codex_preferences', { preferences });
     preview = { ...preview, preferences, connection: preferences.enabled ? 'preview' : 'disabled',
       tasks: preview.tasks.map(task => ({ ...task, stale: !preferences.enabled })),
       alert: preferences.enabled && preferences.notifications ? preview.alert : null };
     publishPreview(); return preview;
   },
-  open: (id: string): Promise<void> => desktop && !measurement ? invoke('open_codex_thread', { id }) : Promise.resolve(),
-  testAlert: (): Promise<void> => desktop && !measurement ? invoke('test_codex_alert') : Promise.resolve(),
+  open: (id: string): Promise<void> => desktop && !isolated ? invoke('open_codex_thread', { id }) : Promise.resolve(),
+  testAlert: (): Promise<void> => desktop && !isolated ? invoke('test_codex_alert') : Promise.resolve(),
   simulate(phase: CodexPhase | 'reset' | 'progress') {
-    if (desktop || measurement) return;
+    if (desktop || isolated) return;
     if (phase === 'reset') { preview = { ...structuredClone(EMPTY_CODEX), revision: preview.revision }; publishPreview(); return; }
     if (!preview.preferences.enabled) return;
     const progress = phase === 'progress';

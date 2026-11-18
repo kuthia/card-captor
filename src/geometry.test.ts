@@ -24,6 +24,17 @@ describe('desktop interaction geometry', () => {
     expect(position.x + panel.width).toBeLessThanOrEqual(bounds.right);
     expect(position.y + panel.height).toBeLessThanOrEqual(bounds.bottom);
   });
+
+  it('places a tall deck beside the pet when neither vertical direction has space', () => {
+    const bounds = { left: 0, top: 0, right: 1728, bottom: 1084 };
+    const panel = { width: 352, height: 620 };
+    for (const pet of [{ x: 974, y: 587 }, { x: 1450, y: 500 }]) {
+      const position = placePanel(pet, { width: 168, height: 180 }, panel, bounds);
+      expect(position.x >= pet.x + 168 || position.x + panel.width <= pet.x).toBe(true);
+      expect(position.y).toBeGreaterThanOrEqual(bounds.top + 12);
+      expect(position.y + panel.height).toBeLessThanOrEqual(bounds.bottom - 12);
+    }
+  });
 });
 
 describe('companion interaction priorities', () => {

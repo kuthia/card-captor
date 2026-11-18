@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { advanceCodexMini, codex, EMPTY_CODEX, EMPTY_CODEX_MINI, isNewerCodexSnapshot, type CodexMiniState, type CodexPreferences, type CodexSnapshot } from './codex';
 import { errorMessage } from './provider';
 import { measurement } from './benchmark';
+import { characterValidation } from './validation';
 
 export function useCodex() {
   const [snapshot, setSnapshot] = useState<CodexSnapshot>(EMPTY_CODEX);
@@ -13,7 +14,7 @@ export function useCodex() {
   const busy = useRef(false);
 
   useEffect(() => {
-    if (measurement) return;
+    if (measurement || characterValidation) return;
     let canceled = false;
     let stop: (() => void) | undefined;
     const accept = (next: CodexSnapshot, initial = false) => {
@@ -41,7 +42,7 @@ export function useCodex() {
   }, [mini.expiresAt]);
 
   async function save(preferences: CodexPreferences) {
-    if (busy.current || measurement) return;
+    if (busy.current || measurement || characterValidation) return;
     busy.current = true; setSaving(true); setError(null);
     try {
       const next = await codex.save(preferences);

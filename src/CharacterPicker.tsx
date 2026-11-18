@@ -1,22 +1,27 @@
-import { CHARACTERS, getCharacter, type CharacterId } from './characters';
+import { useRef } from 'react';
+import { CHARACTER_CHOICES, getCharacter, type CharacterSelection } from './characters';
 import { CharacterStill } from './CharacterStill';
+import { RiveCharacter } from './RiveCharacter';
 
 export function CharacterPicker({ selected, pending, disabled, error, onSelect }: {
-  selected: CharacterId;
-  pending: CharacterId | null;
+  selected: CharacterSelection;
+  pending: CharacterSelection | null;
   disabled: boolean;
   error: string | null;
-  onSelect: (id: CharacterId) => void;
+  onSelect: (id: CharacterSelection) => void;
 }) {
+  const direction = useRef<-1 | 1>(1);
   return <div className="character-picker" aria-busy={pending !== null}>
     <p className="panel-description">카드를 챙겨 올 작은 동료를 골라 주세요.<br />선택하면 바로 곁에 나타나요.</p>
     {/* Keep radio focus through async saves so consecutive arrow keys keep working. */}
     <fieldset className="character-options" aria-disabled={disabled}>
       <legend className="sr-only">함께할 캐릭터</legend>
-      {CHARACTERS.map(character => <label key={character.id} className="character-option" data-selected={selected === character.id}>
+      {CHARACTER_CHOICES.map(character => <label key={character.id} className="character-option" data-selected={selected === character.id}>
         <input type="radio" name="character" value={character.id} checked={selected === character.id}
           aria-disabled={disabled} onChange={() => { if (!disabled) onSelect(character.id); }} />
-        <span className="character-option-art"><CharacterStill characterId={character.id} /></span>
+        <span className="character-option-art">{character.id === 'rive'
+          ? <RiveCharacter state="idle" count={0} paused direction={direction} />
+          : <CharacterStill characterId={character.id} />}</span>
         <span className="character-option-name">{character.name}<span className="character-option-check" aria-hidden="true">{selected === character.id ? '✓' : ''}</span></span>
         <span className="character-option-role">{character.role}</span>
         <span className="character-option-description">{character.description}</span>
